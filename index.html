@@ -8,7 +8,7 @@
     body { margin: 0; font-family: sans-serif; background: #121212; color: white; display: flex; flex-direction: column; height: 100vh; }
     #token-input { padding: 10px; font-size: 16px; border: none; width: 100%; box-sizing: border-box; background: #1e1e1e; color: white; }
     #main { display: flex; flex: 1; overflow: hidden; }
-    #channel-list { width: 30%; background: #1e1e1e; overflow-y: auto; padding: 10px; }
+    #channel-list { width: 20%; background: #1e1e1e; overflow-y: auto; padding: 10px; }
     .channel { border: 1px solid #333; border-radius: 5px; padding: 10px; margin-bottom: 10px; cursor: pointer; background: #222; }
     .channel.active { border-color: red; color: red; font-weight: bold; }
     .channel img { width: 50px; height: auto; vertical-align: middle; margin-right: 10px; }
@@ -24,7 +24,7 @@
 <body>
   <label for="tokenInput" style="display: inline-block; margin-bottom: 10px;">
   Token :
-  <input type="text" id="tokenInput" placeholder="Entrer le token" style="padding: 5px; font-size: 16px;">
+  <input type="text" id="tokenInput" placeholder="Entrer le token" style="padding: 5px; font-size: 16px; width: 300px;">
   <span id="tokenStatus" style="margin-left: 8px;">⏳</span>
 </label>
 
