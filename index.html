@@ -479,11 +479,11 @@ function handleSwipe() {
 
   if (Math.abs(diff) > threshold) {
     if (diff > 0) {
-      // 👉 Swipe vers la droite
-      changeChannel(1); // Next
+      // 👉 Swipe vers la gauche
+      changeChannel(-1); // Next
     } else {
-      // 👈 Swipe vers la gauche
-      changeChannel(-1); // Prev
+      // 👈 Swipe vers la droite
+      changeChannel(1); // Prev
     }
   }
 }
