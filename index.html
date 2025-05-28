@@ -354,7 +354,6 @@
   </div> <!-- Fin de #main -->
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
   // Références DOM
   const tokenInput = document.getElementById("tokenInput");
@@ -459,6 +458,35 @@
         break;
     }
   });
+	// ➕ GESTES SWIPE POUR MOBILE (zapping)
+let touchStartX = 0;
+let touchEndX = 0;
+
+const videoArea = document.getElementById("video-container");
+
+videoArea.addEventListener("touchstart", (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+videoArea.addEventListener("touchend", (e) => {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}, false);
+
+function handleSwipe() {
+  const threshold = 50; // px minimum pour que le swipe soit pris en compte
+  const diff = touchEndX - touchStartX;
+
+  if (Math.abs(diff) > threshold) {
+    if (diff > 0) {
+      // 👉 Swipe vers la droite
+      changeChannel(1); // Next
+    } else {
+      // 👈 Swipe vers la gauche
+      changeChannel(-1); // Prev
+    }
+  }
+}
 </script>
 
 </body>
