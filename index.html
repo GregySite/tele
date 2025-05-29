@@ -15,7 +15,27 @@
     .channel-name { vertical-align: middle; display: inline-block; }
     .epg { font-size: 12px; color: #ccc; margin-left: 60px; margin-top: 4px; }
     #video-container {  flex: 1;  padding: 20px;  display: flex;  flex-direction: column;  justify-content: space-between;}
-@media (max-width: 768px) {  #main {    flex-direction: column;    height: 100vh;  }  #video-container {    order: 1;    flex: none;  }  #channel-list {    order: 2;    flex: 1;    height: 100%;    max-height: calc(100vh - 280px); /* ajuste selon taille vidéo + boutons */    overflow-y: auto;  }}
+@media (max-width: 768px) {
+  #main {
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  #video-container {
+    order: 1;
+    flex: none;
+  }
+
+  #channel-list {
+    order: 2;
+    width: 100%;
+    max-width: 100%; /* ← assure la largeur totale */
+    height: auto;
+    max-height: calc(100vh - 280px); /* ajuste selon taille de la vidéo */
+    overflow-y: auto;
+  }
+}
+
     video { width: 100%; height: auto; background: black; }
     #fullscreen-btn { margin-top: 10px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
 	#prev-btn { margin-top: 10px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
