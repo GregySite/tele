@@ -469,6 +469,7 @@
     const index = channels.indexOf(currentChannel);
     const newIndex = (index + direction + channels.length) % channels.length;
     channels[newIndex].click();
+	channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   nextBtn.onclick = () => changeChannel(1);
@@ -513,7 +514,7 @@ videoArea.addEventListener("touchend", (e) => {
 }, false);
 
 function handleSwipe() {
-  const threshold = 50; // px minimum pour que le swipe soit pris en compte
+  const threshold = 80; // px minimum pour que le swipe soit pris en compte
   const diff = touchEndX - touchStartX;
 
   if (Math.abs(diff) > threshold) {
