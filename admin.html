@@ -2,112 +2,90 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin - Gestion des utilisateurs</title>
+  <title>Admin Utilisateurs</title>
   <style>
     body {
       font-family: sans-serif;
-      background: #f4f4f4;
-      margin: 2em;
       max-width: 600px;
-    }
-    h1 {
-      text-align: center;
-    }
-    .user {
-      display: flex;
-      justify-content: space-between;
-      margin: 0.5em 0;
-      padding: 0.5em;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    form {
-      margin-top: 2em;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5em;
+      margin: 20px auto;
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
     }
     input, button {
-      padding: 0.5em;
-      font-size: 1em;
+      margin: 5px 0;
+      padding: 8px;
+      width: 100%;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      margin: 5px 0;
+    }
+    .user-row {
+      display: flex;
+      justify-content: space-between;
     }
   </style>
 </head>
 <body>
-  <h1>Gestion des utilisateurs</h1>
-
-  <div id="users">Chargement des utilisateurs...</div>
-
-  <form id="addUserForm">
-    <h3>Ajouter un utilisateur</h3>
-    <input type="text" id="newUsername" placeholder="Nom d'utilisateur" required />
-    <input type="password" id="newPassword" placeholder="Mot de passe (laisser vide si aucun)" />
-    <button type="submit">Ajouter</button>
+  <h2>Gestion des utilisateurs</h2>
+  <form id="userForm">
+    <input type="text" id="username" placeholder="Nom d'utilisateur" required />
+    <input type="password" id="password" placeholder="Mot de passe (laisser vide pour inchangé)" />
+    <button type="submit">Ajouter / Modifier</button>
   </form>
+
+  <h3>Utilisateurs existants</h3>
+  <ul id="userList">Chargement des utilisateurs...</ul>
 
   <script>
     const apiBase = 'https://tv-auth-backend.onrender.com';
 
-    function loadUsers() {
-      fetch(`${apiBase}/list-users`)
-        .then(res => res.json())
-        .then(users => {
-          const container = document.getElementById('users');
-          container.innerHTML = '';
-          if (users.length === 0) {
-            container.textContent = "Aucun utilisateur.";
-            return;
-          }
-
-          users.forEach(u => {
-            const div = document.createElement('div');
-            div.className = 'user';
-            div.innerHTML = `
+    async function loadUsers() {
+      try {
+        const res = await fetch(`${apiBase}/list-users`);
+        const users = await res.json();
+        const list = document.getElementById("userList");
+        list.innerHTML = "";
+        users.forEach(u => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div class="user-row">
               <span>${u.username}</span>
               <button onclick="deleteUser('${u.username}')">Supprimer</button>
-            `;
-            container.appendChild(div);
-          });
-        })
-        .catch(err => {
-          console.error(err);
-          document.getElementById('users').textContent = "Erreur lors du chargement des utilisateurs";
+            </div>`;
+          list.appendChild(li);
         });
+      } catch (err) {
+        document.getElementById("userList").innerText = "Erreur lors du chargement des utilisateurs";
+      }
     }
 
-    function deleteUser(username) {
-      if (!confirm(`Supprimer l'utilisateur ${username} ?`)) return;
-
-      fetch(`${apiBase}/delete-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      })
-      .then(res => res.json())
-      .then(() => loadUsers())
-      .catch(err => alert("Erreur lors de la suppression"));
-    }
-
-    document.getElementById('addUserForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const username = document.getElementById('newUsername').value.trim();
-      const password = document.getElementById('newPassword').value;
-
-      if (!username) return alert("Le nom d'utilisateur est requis.");
-
-      fetch(`${apiBase}/add-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      .then(res => res.json())
-      .then(() => {
-        document.getElementById('newUsername').value = '';
-        document.getElementById('newPassword').value = '';
+    async function deleteUser(username) {
+      if (confirm(`Supprimer l'utilisateur ${username} ?`)) {
+        await fetch(`${apiBase}/delete-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username })
+        });
         loadUsers();
-      })
-      .catch(err => alert("Erreur lors de l'ajout"));
+      }
+    }
+
+    document.getElementById("userForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      await fetch(`${apiBase}/save-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      document.getElementById("userForm").reset();
+      loadUsers();
     });
 
     loadUsers();
