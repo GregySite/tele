@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>CA_v5.5</title>
+  <title>CA_v6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
   html, body {
@@ -393,6 +393,12 @@
   </div> <!-- Fin de #main -->
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+	<script>
+  if (sessionStorage.getItem("auth") !== "true") {
+    window.location.href = "index.html";
+  }
+</script>
+
 <script>
   // Références DOM
   const tokenInput = document.getElementById("tokenInput");
