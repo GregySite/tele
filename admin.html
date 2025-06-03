@@ -1,62 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin - Gestion des utilisateurs</title>
+  <meta charset="UTF-8" />
+  <title>Admin Utilisateurs</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: auto; }
-    input, button { margin: 5px; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
+    table { border-collapse: collapse; width: 100%; background: white; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #eee; }
+    input[type="text"], input[type="password"] { width: 100%; padding: 6px; }
+    button { padding: 6px 12px; margin-top: 8px; }
+    .error { color: red; }
+    .success { color: green; }
   </style>
 </head>
 <body>
-  <h1>Gestion des utilisateurs</h1>
+  <h1>Administration des utilisateurs</h1>
 
-  <h3>Ajouter / Modifier</h3>
-  <input type="text" id="username" placeholder="Nom d'utilisateur">
-  <input type="password" id="password" placeholder="Mot de passe (laisser vide = sans mot de passe)">
-  <button onclick="saveUser()">Enregistrer</button>
+  <table id="usersTable">
+    <thead>
+      <tr>
+        <th>Nom d'utilisateur</th>
+        <th>Modifier mot de passe</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Utilisateurs ici -->
+    </tbody>
+  </table>
 
-  <h3>Liste des utilisateurs</h3>
-  <ul id="userList"></ul>
+  <h2>Ajouter un nouvel utilisateur</h2>
+  <form id="addUserForm">
+    <label>
+      Nom d'utilisateur : <br />
+      <input type="text" id="newUsername" required />
+    </label><br /><br />
+    <label>
+      Mot de passe : <br />
+      <input type="password" id="newPassword" required />
+    </label><br /><br />
+    <button type="submit">Ajouter utilisateur</button>
+  </form>
 
-  <script>
-    const apiBase = "https://tv-auth-backend.onrender.com"; // Modifier ici si besoin
+  <p id="message"></p>
 
-    async function loadUsers() {
-      const res = await fetch(apiBase + "/admin/users");
-      const users = await res.json();
-      const list = document.getElementById("userList");
-      list.innerHTML = "";
-      users.forEach(user => {
-        const li = document.createElement("li");
-        li.textContent = user.username;
-        const del = document.createElement("button");
-        del.textContent = "Supprimer";
-        del.onclick = () => deleteUser(user.username);
-        li.appendChild(del);
-        list.appendChild(li);
-      });
+<script>
+  const apiBase = 'https://tv-auth-backend.onrender.com'; // À modifier si besoin
+
+  async function fetchUsers() {
+    const res = await fetch(apiBase + '/users');
+    if (!res.ok) {
+      showMessage('Erreur lors du chargement des utilisateurs', true);
+      return [];
+    }
+    return await res.json();
+  }
+
+  async function renderUsers() {
+    const users = await fetchUsers();
+    const tbody = document.querySelector('#usersTable tbody');
+    tbody.innerHTML = '';
+
+    users.forEach(user => {
+      const tr = document.createElement('tr');
+
+      // Username (readonly)
+      const tdUser = document.createElement('td');
+      tdUser.textContent = user.username;
+      tr.appendChild(tdUser);
+
+      // Nouveau mot de passe input
+      const tdPass = document.createElement('td');
+      const inputPass = document.createElement('input');
+      inputPass.type = 'password';
+      inputPass.placeholder = 'Nouveau mot de passe (laisser vide pour ne pas changer)';
+      tdPass.appendChild(inputPass);
+      tr.appendChild(tdPass);
+
+      // Actions : Modifier + Supprimer
+      const tdActions = document.createElement('td');
+
+      const btnUpdate = document.createElement('button');
+      btnUpdate.textContent = 'Modifier';
+      btnUpdate.onclick = async () => {
+        const newPass = inputPass.value.trim();
+        if (newPass === '') {
+          showMessage('Le mot de passe est vide, aucune modification effectuée.', true);
+          return;
+        }
+        const res = await fetch(apiBase + '/users/' + encodeURIComponent(user.username), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: newPass })
+        });
+        if (res.ok) {
+          showMessage(`Mot de passe modifié pour ${user.username}`, false);
+          inputPass.value = '';
+          await renderUsers();
+        } else {
+          showMessage('Erreur lors de la modification du mot de passe', true);
+        }
+      };
+      tdActions.appendChild(btnUpdate);
+
+      const btnDelete = document.createElement('button');
+      btnDelete.textContent = 'Supprimer';
+      btnDelete.style.marginLeft = '10px';
+      btnDelete.onclick = async () => {
+        if (!confirm(`Confirmer la suppression de ${user.username} ?`)) return;
+        const res = await fetch(apiBase + '/users/' + encodeURIComponent(user.username), {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          showMessage(`${user.username} supprimé`, false);
+          await renderUsers();
+        } else {
+          showMessage('Erreur lors de la suppression', true);
+        }
+      };
+      tdActions.appendChild(btnDelete);
+
+      tr.appendChild(tdActions);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('addUserForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('newUsername').value.trim();
+    const password = document.getElementById('newPassword').value.trim();
+
+    if (!username || !password) {
+      showMessage('Veuillez renseigner un nom d’utilisateur et un mot de passe.', true);
+      return;
     }
 
-    async function saveUser() {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      await fetch(apiBase + "/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-      });
-      loadUsers();
-    }
+    const res = await fetch(apiBase + '/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
 
-    async function deleteUser(username) {
-      await fetch(apiBase + "/admin/users/" + username, {
-        method: "DELETE"
-      });
-      loadUsers();
+    if (res.ok) {
+      showMessage(`Utilisateur ${username} ajouté`, false);
+      e.target.reset();
+      await renderUsers();
+    } else {
+      const err = await res.json();
+      showMessage(err.message || 'Erreur lors de l’ajout', true);
     }
+  };
 
-    loadUsers();
-  </script>
+  function showMessage(msg, isError) {
+    const p = document.getElementById('message');
+    p.textContent = msg;
+    p.className = isError ? 'error' : 'success';
+    setTimeout(() => { p.textContent = ''; }, 5000);
+  }
+
+  // Chargement initial
+  renderUsers();
+</script>
 </body>
 </html>
