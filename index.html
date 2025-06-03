@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Connexion</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding-top: 100px; }
+    input { padding: 10px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Connexion au site TV</h2>
+  <input type="text" id="username" placeholder="Nom d'utilisateur" /><br />
+  <input type="password" id="password" placeholder="Mot de passe" /><br />
+  <button onclick="login()">Se connecter</button>
+  <p id="error" style="color:red;"></p>
+
+  <script>
+    async function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      const res = await fetch("https://ton-backend.onrender.com/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        sessionStorage.setItem("auth", "true");
+        window.location.href = "tv.html";
+      } else {
+        document.getElementById("error").textContent = "Identifiants incorrects.";
+      }
+    }
+  </script>
+</body>
+</html>
