@@ -2,166 +2,115 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Utilisateurs</title>
+  <title>Admin - Gestion des utilisateurs</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
-    table { border-collapse: collapse; width: 100%; background: white; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #eee; }
-    input[type="text"], input[type="password"] { width: 100%; padding: 6px; }
-    button { padding: 6px 12px; margin-top: 8px; }
-    .error { color: red; }
-    .success { color: green; }
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      margin: 2em;
+      max-width: 600px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .user {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.5em 0;
+      padding: 0.5em;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    form {
+      margin-top: 2em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+    }
+    input, button {
+      padding: 0.5em;
+      font-size: 1em;
+    }
   </style>
 </head>
 <body>
-  <h1>Administration des utilisateurs</h1>
+  <h1>Gestion des utilisateurs</h1>
 
-  <table id="usersTable">
-    <thead>
-      <tr>
-        <th>Nom d'utilisateur</th>
-        <th>Modifier mot de passe</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Utilisateurs ici -->
-    </tbody>
-  </table>
+  <div id="users">Chargement des utilisateurs...</div>
 
-  <h2>Ajouter un nouvel utilisateur</h2>
   <form id="addUserForm">
-    <label>
-      Nom d'utilisateur : <br />
-      <input type="text" id="newUsername" required />
-    </label><br /><br />
-    <label>
-      Mot de passe : <br />
-      <input type="password" id="newPassword" required />
-    </label><br /><br />
-    <button type="submit">Ajouter utilisateur</button>
+    <h3>Ajouter un utilisateur</h3>
+    <input type="text" id="newUsername" placeholder="Nom d'utilisateur" required />
+    <input type="password" id="newPassword" placeholder="Mot de passe (laisser vide si aucun)" />
+    <button type="submit">Ajouter</button>
   </form>
 
-  <p id="message"></p>
+  <script>
+    const apiBase = 'https://tv-auth-backend.onrender.com';
 
-<script>
-  const apiBase = 'https://tv-auth-backend.onrender.com'; // À modifier si besoin
+    function loadUsers() {
+      fetch(`${apiBase}/list-users`)
+        .then(res => res.json())
+        .then(users => {
+          const container = document.getElementById('users');
+          container.innerHTML = '';
+          if (users.length === 0) {
+            container.textContent = "Aucun utilisateur.";
+            return;
+          }
 
-  async function fetchUsers() {
-    const res = await fetch(apiBase + '/users');
-    if (!res.ok) {
-      showMessage('Erreur lors du chargement des utilisateurs', true);
-      return [];
-    }
-    return await res.json();
-  }
-
-  async function renderUsers() {
-    const users = await fetchUsers();
-    const tbody = document.querySelector('#usersTable tbody');
-    tbody.innerHTML = '';
-
-    users.forEach(user => {
-      const tr = document.createElement('tr');
-
-      // Username (readonly)
-      const tdUser = document.createElement('td');
-      tdUser.textContent = user.username;
-      tr.appendChild(tdUser);
-
-      // Nouveau mot de passe input
-      const tdPass = document.createElement('td');
-      const inputPass = document.createElement('input');
-      inputPass.type = 'password';
-      inputPass.placeholder = 'Nouveau mot de passe (laisser vide pour ne pas changer)';
-      tdPass.appendChild(inputPass);
-      tr.appendChild(tdPass);
-
-      // Actions : Modifier + Supprimer
-      const tdActions = document.createElement('td');
-
-      const btnUpdate = document.createElement('button');
-      btnUpdate.textContent = 'Modifier';
-      btnUpdate.onclick = async () => {
-        const newPass = inputPass.value.trim();
-        if (newPass === '') {
-          showMessage('Le mot de passe est vide, aucune modification effectuée.', true);
-          return;
-        }
-        const res = await fetch(apiBase + '/users/' + encodeURIComponent(user.username), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: newPass })
+          users.forEach(u => {
+            const div = document.createElement('div');
+            div.className = 'user';
+            div.innerHTML = `
+              <span>${u.username}</span>
+              <button onclick="deleteUser('${u.username}')">Supprimer</button>
+            `;
+            container.appendChild(div);
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('users').textContent = "Erreur lors du chargement des utilisateurs";
         });
-        if (res.ok) {
-          showMessage(`Mot de passe modifié pour ${user.username}`, false);
-          inputPass.value = '';
-          await renderUsers();
-        } else {
-          showMessage('Erreur lors de la modification du mot de passe', true);
-        }
-      };
-      tdActions.appendChild(btnUpdate);
-
-      const btnDelete = document.createElement('button');
-      btnDelete.textContent = 'Supprimer';
-      btnDelete.style.marginLeft = '10px';
-      btnDelete.onclick = async () => {
-        if (!confirm(`Confirmer la suppression de ${user.username} ?`)) return;
-        const res = await fetch(apiBase + '/users/' + encodeURIComponent(user.username), {
-          method: 'DELETE'
-        });
-        if (res.ok) {
-          showMessage(`${user.username} supprimé`, false);
-          await renderUsers();
-        } else {
-          showMessage('Erreur lors de la suppression', true);
-        }
-      };
-      tdActions.appendChild(btnDelete);
-
-      tr.appendChild(tdActions);
-
-      tbody.appendChild(tr);
-    });
-  }
-
-  document.getElementById('addUserForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('newUsername').value.trim();
-    const password = document.getElementById('newPassword').value.trim();
-
-    if (!username || !password) {
-      showMessage('Veuillez renseigner un nom d’utilisateur et un mot de passe.', true);
-      return;
     }
 
-    const res = await fetch(apiBase + '/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+    function deleteUser(username) {
+      if (!confirm(`Supprimer l'utilisateur ${username} ?`)) return;
+
+      fetch(`${apiBase}/delete-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+      .then(res => res.json())
+      .then(() => loadUsers())
+      .catch(err => alert("Erreur lors de la suppression"));
+    }
+
+    document.getElementById('addUserForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const username = document.getElementById('newUsername').value.trim();
+      const password = document.getElementById('newPassword').value;
+
+      if (!username) return alert("Le nom d'utilisateur est requis.");
+
+      fetch(`${apiBase}/add-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(res => res.json())
+      .then(() => {
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        loadUsers();
+      })
+      .catch(err => alert("Erreur lors de l'ajout"));
     });
 
-    if (res.ok) {
-      showMessage(`Utilisateur ${username} ajouté`, false);
-      e.target.reset();
-      await renderUsers();
-    } else {
-      const err = await res.json();
-      showMessage(err.message || 'Erreur lors de l’ajout', true);
-    }
-  };
-
-  function showMessage(msg, isError) {
-    const p = document.getElementById('message');
-    p.textContent = msg;
-    p.className = isError ? 'error' : 'success';
-    setTimeout(() => { p.textContent = ''; }, 5000);
-  }
-
-  // Chargement initial
-  renderUsers();
-</script>
+    loadUsers();
+  </script>
 </body>
 </html>
