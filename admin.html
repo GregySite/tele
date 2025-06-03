@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Admin - Gestion des utilisateurs</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; }
+    input, button { margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Gestion des utilisateurs</h1>
+
+  <h3>Ajouter / Modifier</h3>
+  <input type="text" id="username" placeholder="Nom d'utilisateur">
+  <input type="password" id="password" placeholder="Mot de passe (laisser vide = sans mot de passe)">
+  <button onclick="saveUser()">Enregistrer</button>
+
+  <h3>Liste des utilisateurs</h3>
+  <ul id="userList"></ul>
+
+  <script>
+    const apiBase = "https://tv-auth-backend.onrender.com"; // Modifier ici si besoin
+
+    async function loadUsers() {
+      const res = await fetch(apiBase + "/admin/users");
+      const users = await res.json();
+      const list = document.getElementById("userList");
+      list.innerHTML = "";
+      users.forEach(user => {
+        const li = document.createElement("li");
+        li.textContent = user.username;
+        const del = document.createElement("button");
+        del.textContent = "Supprimer";
+        del.onclick = () => deleteUser(user.username);
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+    }
+
+    async function saveUser() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      await fetch(apiBase + "/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      loadUsers();
+    }
+
+    async function deleteUser(username) {
+      await fetch(apiBase + "/admin/users/" + username, {
+        method: "DELETE"
+      });
+      loadUsers();
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>
