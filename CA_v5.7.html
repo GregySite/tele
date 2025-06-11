@@ -460,7 +460,76 @@ document.querySelectorAll(".channel").forEach(channel => {
     channel.classList.add("active");
     currentChannel = channel;
   };
-});
+}
+
+// Navigation chaînes
+  const channels = Array.from(document.querySelectorAll(".channel"));
+
+  function changeChannel(direction) {
+    if (!currentChannel) return;
+    const index = channels.indexOf(currentChannel);
+    const newIndex = (index + direction + channels.length) % channels.length;
+    channels[newIndex].click();
+	channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  nextBtn.onclick = () => changeChannel(1);
+  prevBtn.onclick = () => changeChannel(-1);
+
+  // Raccourcis clavier : F, M, P, N, S
+  document.addEventListener("keydown", (e) => {
+    if (!video) return;
+    switch (e.key.toLowerCase()) {
+      case "f":
+        if (video.requestFullscreen) video.requestFullscreen();
+        break;
+      case "m":
+        video.muted = !video.muted;
+        break;
+      case "s":
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        break;
+      case "n":
+        changeChannel(1);
+        break;
+      case "p":
+        changeChannel(-1);
+        break;
+    }
+  });
+	// ➕ GESTES SWIPE POUR MOBILE (zapping)
+let touchStartX = 0;
+let touchEndX = 0;
+
+const videoArea = document.getElementById("video-container");
+
+videoArea.addEventListener("touchstart", (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+videoArea.addEventListener("touchend", (e) => {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}, false);
+
+function handleSwipe() {
+  const threshold = 80; // px minimum pour que le swipe soit pris en compte
+  const diff = touchEndX - touchStartX;
+
+  if (Math.abs(diff) > threshold) {
+    if (diff > 0) {
+      // 👉 Swipe vers la gauche
+      changeChannel(-1); // Next
+    } else {
+      // 👈 Swipe vers la droite
+      changeChannel(1); // Prev
+    }
+  }
+					     
+					     
+					     );
 </script>
 
 
