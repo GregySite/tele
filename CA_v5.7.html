@@ -401,10 +401,14 @@
     </div>
   </div> <!-- Fin de #main -->
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
 let token = "";
+const video = document.getElementById("video");
+const fullscreenBtn = document.getElementById("fullscreen-btn");
+let currentChannel = null;
 
+// Chargement du token depuis fichier
 fetch("token.txt")
   .then(res => res.text())
   .then(text => {
@@ -412,17 +416,6 @@ fetch("token.txt")
     localStorage.setItem("tvToken", token);
   })
   .catch(() => alert("Impossible de charger le token."));
-
-const video = document.getElementById("video");
-const fullscreenBtn = document.getElementById("fullscreen-btn");
-let currentChannel = null;
-
-// Fullscreen
-fullscreenBtn.onclick = () => {
-  if (video.requestFullscreen) video.requestFullscreen();
-  else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-  else if (video.msRequestFullscreen) video.msRequestFullscreen();
-};
 
 // Navigation chaînes
 const channels = Array.from(document.querySelectorAll(".channel"));
@@ -434,14 +427,21 @@ function changeChannel(direction) {
   const index = channels.indexOf(currentChannel);
   const newIndex = (index + direction + channels.length) % channels.length;
   channels[newIndex].click();
+  channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 nextBtn.onclick = () => changeChannel(1);
 prevBtn.onclick = () => changeChannel(-1);
 
+// Fullscreen
+fullscreenBtn.onclick = () => {
+  if (video.requestFullscreen) video.requestFullscreen();
+  else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+  else if (video.msRequestFullscreen) video.msRequestFullscreen();
+};
+
 // Lecture chaîne
 document.querySelectorAll(".channel").forEach(channel => {
-  const name = channel.getAttribute("data-name");
   const url = channel.getAttribute("data-url");
 
   channel.onclick = () => {
@@ -460,46 +460,21 @@ document.querySelectorAll(".channel").forEach(channel => {
     channel.classList.add("active");
     currentChannel = channel;
   };
-}
+});
 
-// Navigation chaînes
-  const channels = Array.from(document.querySelectorAll(".channel"));
-
-  function changeChannel(direction) {
-    if (!currentChannel) return;
-    const index = channels.indexOf(currentChannel);
-    const newIndex = (index + direction + channels.length) % channels.length;
-    channels[newIndex].click();
-	channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+// Raccourcis clavier : F, M, P, N, S
+document.addEventListener("keydown", (e) => {
+  if (!video) return;
+  switch (e.key.toLowerCase()) {
+    case "f": video.requestFullscreen(); break;
+    case "m": video.muted = !video.muted; break;
+    case "s": video.pause(); video.removeAttribute("src"); video.load(); break;
+    case "n": changeChannel(1); break;
+    case "p": changeChannel(-1); break;
   }
+});
 
-  nextBtn.onclick = () => changeChannel(1);
-  prevBtn.onclick = () => changeChannel(-1);
-
-  // Raccourcis clavier : F, M, P, N, S
-  document.addEventListener("keydown", (e) => {
-    if (!video) return;
-    switch (e.key.toLowerCase()) {
-      case "f":
-        if (video.requestFullscreen) video.requestFullscreen();
-        break;
-      case "m":
-        video.muted = !video.muted;
-        break;
-      case "s":
-        video.pause();
-        video.removeAttribute("src");
-        video.load();
-        break;
-      case "n":
-        changeChannel(1);
-        break;
-      case "p":
-        changeChannel(-1);
-        break;
-    }
-  });
-	// ➕ GESTES SWIPE POUR MOBILE (zapping)
+// GESTES SWIPE POUR MOBILE (zapping)
 let touchStartX = 0;
 let touchEndX = 0;
 
@@ -515,22 +490,19 @@ videoArea.addEventListener("touchend", (e) => {
 }, false);
 
 function handleSwipe() {
-  const threshold = 80; // px minimum pour que le swipe soit pris en compte
+  const threshold = 80;
   const diff = touchEndX - touchStartX;
 
   if (Math.abs(diff) > threshold) {
     if (diff > 0) {
-      // 👉 Swipe vers la gauche
-      changeChannel(-1); // Next
+      changeChannel(-1); // ← gauche
     } else {
-      // 👈 Swipe vers la droite
-      changeChannel(1); // Prev
+      changeChannel(1); // → droite
     }
   }
-					     
-					     
-					     );
+}
 </script>
+
 
 
 </body>
