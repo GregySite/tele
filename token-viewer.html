@@ -2,35 +2,53 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Token</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Viewer</title>
   <style>
     body {
       background: #111;
-      color: #fff;
+      color: #0f0;
       font-family: monospace;
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100vh;
       margin: 0;
-      text-align: center;
-      padding: 20px;
+      font-size: 18px;
     }
-    #token {
+    .token-box {
       background: #222;
-      padding: 10px;
-      border-radius: 5px;
-      word-break: break-word;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #0f0;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div id="token">Chargement...</div>
+  <div class="token-box" id="output">🔄 Chargement...</div>
 
   <script>
-    const token = localStorage.getItem("token");
-    document.getElementById("token").textContent = token || "❌ Aucun token trouvé.";
+    const jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1aWQiOiJjNDNkMWJmZTA0ZDMyZTIzNGI2YWI5ZmNjZjNlNzQyMyIsImxvZ2luIjoiNjE4ODEiLCJsZXZlbCI6IkZSRUUiLCJleHBpcmF0aW9uIjoiMjAyNS0wNi0wNFQxMTo0MjoxMy4wMDBaIiwiaWF0IjoxNzQ5NzEyMzk3LCJleHAiOjE3NDk4ODUxOTd9.zTuuXL65e9KoIAvQfI-VVGTTRJNellFqjNK4ZdMprWfPGsRcdGBAU-bGIj5ci_QEORni3SOJGP4mshjCO7N6Rw";
+
+    fetch("https://api-beta.annatel.tv/v1/tv/liveWithUrls", {
+      headers: {
+        "Authorization": "Bearer " + jwt
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const url = data?.data?.[0]?.url || "";
+      const match = url.match(/token=([\w\-]+)/);
+      if (match) {
+        const token = match[1];
+        document.getElementById("output").textContent = `✅ Token : ${token}`;
+      } else {
+        document.getElementById("output").textContent = "❌ Token non trouvé.";
+      }
+    })
+    .catch(() => {
+      document.getElementById("output").textContent = "❌ Erreur de requête.";
+    });
   </script>
 </body>
 </html>
