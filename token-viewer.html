@@ -3,52 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <title>Token Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
+      background: #121212;
+      color: white;
+      font-family: Arial, sans-serif;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
       margin: 0;
-      font-size: 18px;
+      flex-direction: column;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px;
     }
     .token-box {
-      background: #222;
-      padding: 20px;
+      background: #1e1e1e;
+      padding: 15px 25px;
       border-radius: 8px;
-      box-shadow: 0 0 10px #0f0;
-      text-align: center;
+      font-size: 18px;
+      margin-top: 20px;
     }
+    #msg { color: red; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <div class="token-box" id="output">🔄 Chargement...</div>
+  <div id="auth">
+    <input type="password" id="pass" placeholder="Mot de passe" />
+    <button onclick="check()">Valider</button>
+    <p id="msg"></p>
+  </div>
+
+  <div id="main" style="display:none;">
+    <div class="token-box" id="output">🔄 Chargement du token...</div>
+  </div>
 
   <script>
-    const jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1aWQiOiJjNDNkMWJmZTA0ZDMyZTIzNGI2YWI5ZmNjZjNlNzQyMyIsImxvZ2luIjoiNjE4ODEiLCJsZXZlbCI6IkZSRUUiLCJleHBpcmF0aW9uIjoiMjAyNS0wNi0wNFQxMTo0MjoxMy4wMDBaIiwiaWF0IjoxNzQ5NzEyMzk3LCJleHAiOjE3NDk4ODUxOTd9.zTuuXL65e9KoIAvQfI-VVGTTRJNellFqjNK4ZdMprWfPGsRcdGBAU-bGIj5ci_QEORni3SOJGP4mshjCO7N6Rw";
+    const CORRECT_PASSWORD = "lutigredan"; // 🔒 À personnaliser
 
-    fetch("https://api-beta.annatel.tv/v1/tv/liveWithUrls", {
-      headers: {
-        "Authorization": "Bearer " + jwt
-      }
-    })
-    .then(res => res.json())
-    .then(data => {
-      const url = data?.data?.[0]?.url || "";
-      const match = url.match(/token=([\w\-]+)/);
-      if (match) {
-        const token = match[1];
-        document.getElementById("output").textContent = `✅ Token : ${token}`;
+    function check() {
+      const input = document.getElementById("pass").value;
+      const msg = document.getElementById("msg");
+      if (input === CORRECT_PASSWORD) {
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("main").style.display = "block";
+        loadToken();
       } else {
-        document.getElementById("output").textContent = "❌ Token non trouvé.";
+        msg.textContent = "⛔ Mot de passe incorrect.";
       }
-    })
-    .catch(() => {
-      document.getElementById("output").textContent = "❌ Erreur de requête.";
-    });
+    }
+
+    function loadToken() {
+      const jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1aWQiOiJjNDNkMWJmZTA0ZDMyZTIzNGI2YWI5ZmNjZjNlNzQyMyIsImxvZ2luIjoiNjE4ODEiLCJsZXZlbCI6IkZSRUUiLCJleHBpcmF0aW9uIjoiMjAyNS0wNi0wNFQxMTo0MjoxMy4wMDBaIiwiaWF0IjoxNzQ5NzEyMzk3LCJleHAiOjE3NDk4ODUxOTd9.zTuuXL65e9KoIAvQfI-VVGTTRJNellFqjNK4ZdMprWfPGsRcdGBAU-bGIj5ci_QEORni3SOJGP4mshjCO7N6Rw";
+
+      fetch("https://api-beta.annatel.tv/v1/tv/liveWithUrls", {
+        headers: {
+          "Authorization": "Bearer " + jwt
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        const url = data?.data?.[0]?.url || "";
+        const match = url.match(/token=([\w\-]+)/);
+        if (match) {
+          document.getElementById("output").textContent = `✅ Token : ${match[1]}`;
+        } else {
+          document.getElementById("output").textContent = "❌ Token non trouvé.";
+        }
+      })
+      .catch(() => {
+        document.getElementById("output").textContent = "❌ Erreur de requête.";
+      });
+    }
   </script>
 </body>
 </html>
