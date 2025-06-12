@@ -2,40 +2,35 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Mon Token Annatel</title>
+  <title>Token</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      background-color: #121212;
-      color: white;
-      font-family: sans-serif;
-      padding: 20px;
+      background: #111;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
       text-align: center;
+      padding: 20px;
     }
     #token {
-      margin-top: 20px;
+      background: #222;
       padding: 10px;
-      background: #1e1e1e;
-      border: 1px solid #444;
       border-radius: 5px;
-      word-break: break-all;
-      font-family: monospace;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
-  <h1>🔐 Votre token Annatel</h1>
-  <div id="token">Chargement du token...</div>
+  <div id="token">Chargement...</div>
 
   <script>
     const token = localStorage.getItem("token");
-    const div = document.getElementById("token");
-
-    if (token) {
-      div.textContent = token;
-    } else {
-      div.textContent = "❌ Aucun token trouvé dans le navigateur.";
-    }
+    document.getElementById("token").textContent = token || "❌ Aucun token trouvé.";
   </script>
 </body>
 </html>
