@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mon Token Annatel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background-color: #121212;
+      color: white;
+      font-family: sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+    #token {
+      margin-top: 20px;
+      padding: 10px;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 5px;
+      word-break: break-all;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 Votre token Annatel</h1>
+  <div id="token">Chargement du token...</div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    const div = document.getElementById("token");
+
+    if (token) {
+      div.textContent = token;
+    } else {
+      div.textContent = "❌ Aucun token trouvé dans le navigateur.";
+    }
+  </script>
+</body>
+</html>
