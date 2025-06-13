@@ -68,12 +68,15 @@
       .then(res => res.json())
       .then(data => {
         const url = data?.data?.[0]?.url || "";
-        const match = url.match(/token=([\w\-]+)/);
-        if (match) {
-          document.getElementById("output").textContent = `✅ Token : ${match[1]}`;
-        } else {
-          document.getElementById("output").textContent = "❌ Token non trouvé.";
-        }
+const match = url.match(/token=([\w\-]+)/);
+
+if (match) {
+  const fullToken = match[1];
+  const shortenedToken = fullToken.substring(fullToken.indexOf("-") + 1); // retire tout avant le 1er tiret
+  document.getElementById("output").textContent = `✅ Token : ${shortenedToken}`;
+} else {
+  document.getElementById("output").textContent = "❌ Token non trouvé.";
+}
       })
       .catch(() => {
         document.getElementById("output").textContent = "❌ Erreur de requête.";
