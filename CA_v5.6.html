@@ -495,25 +495,29 @@
 
   // Raccourcis clavier : F, M, P, N, S
   document.addEventListener("keydown", (e) => {
-    if (!video) return;
-    switch (e.key.toLowerCase()) {
-      case "f":
-        if (video.requestFullscreen) video.requestFullscreen();
-        break;
-      case "m":
-        video.muted = !video.muted;
-        break;
-      case "s":
-        video.pause();
-        video.removeAttribute("src");
-        video.load();
-        break;
-      case "n":
-        changeChannel(1);
-        break;
-      case "p":
-        changeChannel(-1);
-        break;
+    // Bloque les raccourcis si on tape dans un champ input ou textarea
+  const tag = document.activeElement.tagName.toLowerCase();
+  if (tag === "input" || tag === "textarea") return;
+
+  switch (e.key.toLowerCase()) {
+    case "f":
+      if (video.requestFullscreen) video.requestFullscreen();
+      break;
+    case "m":
+      video.muted = !video.muted;
+      break;
+    case "s":
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      break;
+    case "n":
+      changeChannel(1);
+      break;
+    case "p":
+      changeChannel(-1);
+      break;
+
     }
   });
 	// ➕ GESTES SWIPE POUR MOBILE (zapping)
