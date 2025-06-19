@@ -400,7 +400,7 @@
 	
 
     <div id="video-container">
-      <video id="video" controls autoplay></video>
+      <video id="video" playsinline webkit-playsinline controls autoplay></video>
       <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
       <button id="prev-btn"      >&lt; Prev  </button>
       <button id="fullscreen-btn">Full screen</button>
@@ -511,11 +511,15 @@
     case "m":
       video.muted = !video.muted;
       break;
+		  
     case "s":
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      break;
+  if (Hls.isSupported()) {
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+  }
+  break;
+
     case "n":
       changeChannel(1);
       break;
@@ -529,11 +533,13 @@
 let touchStartX = 0;
 let touchEndX = 0;
 
-document.body.addEventListener("touchstart", (e) => {
+const videoArea = document.getElementById("video-container");
+
+videoArea.addEventListener("touchstart", (e) => {
   touchStartX = e.changedTouches[0].screenX;
 }, false);
 
-document.body.addEventListener("touchend", (e) => {
+videoArea.addEventListener("touchend", (e) => {
   touchEndX = e.changedTouches[0].screenX;
   handleSwipe();
 }, false);
