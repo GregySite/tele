@@ -500,9 +500,14 @@
   if (tag === "input" || tag === "textarea") return;
 
   switch (e.key.toLowerCase()) {
-    case "f":
-      if (video.requestFullscreen) video.requestFullscreen();
-      break;
+	case "f":
+	  if (document.fullscreenElement) {
+	    document.exitFullscreen?.();
+	  } else {
+	    video.requestFullscreen?.();
+	  }
+	  break;
+
     case "m":
       video.muted = !video.muted;
       break;
@@ -524,16 +529,15 @@
 let touchStartX = 0;
 let touchEndX = 0;
 
-const videoArea = document.getElementById("video-container");
-
-videoArea.addEventListener("touchstart", (e) => {
+document.body.addEventListener("touchstart", (e) => {
   touchStartX = e.changedTouches[0].screenX;
 }, false);
 
-videoArea.addEventListener("touchend", (e) => {
+document.body.addEventListener("touchend", (e) => {
   touchEndX = e.changedTouches[0].screenX;
   handleSwipe();
 }, false);
+
 
 function handleSwipe() {
   const threshold = 80; // px minimum pour que le swipe soit pris en compte
