@@ -488,6 +488,20 @@
     
     // Cas 2 : Natif (Safari iOS / iPad)
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      
+      // --- AJOUT : Gestion automatique du fallback HTTPS -> HTTP ---
+      video.onerror = function() {
+          var currentUrl = video.src;
+          // Si c'est la chaine Israel Torah et qu'on est en HTTPS
+          if (currentUrl.indexOf("israeltorah") !== -1 && currentUrl.indexOf("https:") !== -1) {
+              console.log("Erreur HTTPS détectée sur iPad, bascule vers HTTP...");
+              // On remplace https par http et on relance immédiatement
+              video.src = currentUrl.replace("https:", "http:");
+              video.play();
+          }
+      };
+      // ------------------------------------------------------------
+
       video.src = finalUrl;
       
       // Astuce pour lancer la vidéo sur iOS sans bloquer
