@@ -412,153 +412,212 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-  // Références DOM
-  const tokenInput = document.getElementById("tokenInput");
-  const tokenStatus = document.getElementById("tokenStatus");
-  const video = document.getElementById("video");
-  const fullscreenBtn = document.getElementById("fullscreen-btn");
-  const nextBtn = document.getElementById("next-btn");
-  const prevBtn = document.getElementById("prev-btn");
-  let currentChannel = null;
+  /* --- VARIABLES GLOBALES (Version compatible anciens iPad) --- */
+  var tokenInput = document.getElementById("tokenInput");
+  var tokenStatus = document.getElementById("tokenStatus");
+  var video = document.getElementById("video");
+  var fullscreenBtn = document.getElementById("fullscreen-btn");
+  var nextBtn = document.getElementById("next-btn");
+  var prevBtn = document.getElementById("prev-btn");
+  var currentChannel = null;
+  var hls = null;
 
-  // Token au démarrage
-  const savedToken = localStorage.getItem("tvToken");
+  /* --- 1. GESTION DU TOKEN --- */
+  
+  // Fonction de vérification compatible (XMLHttpRequest au lieu de fetch)
+  function checkToken(token) {
+    if (!token) return;
+    var testUrl = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
+    tokenStatus.textContent = "⏳";
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open("HEAD", testUrl, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 400) {
+          tokenStatus.textContent = "✅";
+        } else {
+          tokenStatus.textContent = "❌";
+        }
+      }
+    };
+    xhr.send();
+  }
+
+  // Chargement au démarrage
+  var savedToken = localStorage.getItem("tvToken");
   if (savedToken) {
     tokenInput.value = savedToken;
     checkToken(savedToken);
   }
 
-  // Token à la saisie
-  tokenInput.addEventListener("input", (e) => {
-    const token = e.target.value.trim();
+  // Sauvegarde à la saisie
+  tokenInput.addEventListener("input", function(e) {
+    var token = e.target.value.trim();
     localStorage.setItem("tvToken", token);
     checkToken(token);
   });
 
-  // Vérification du token via HEAD sur TF1
-  function checkToken(token) {
-    const testUrl = `https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=${token}`;
-    tokenStatus.textContent = "⏳";
-    fetch(testUrl, { method: "HEAD" })
-      .then(res => tokenStatus.textContent = res.ok ? "✅" : "❌")
-      .catch(() => tokenStatus.textContent = "❌");
+  /* --- 2. GESTION DU PLAYER --- */
+
+  function loadChannel(url) {
+    var token = tokenInput.value.trim();
+    if (!token) {
+      alert("Merci d'entrer un token valide.");
+      return;
+    }
+
+    // Ajout du token à l'URL
+    var finalUrl = url;
+    if (url.indexOf("?token=") === -1) {
+       finalUrl = url + "?token=" + encodeURIComponent(token);
+    }
+
+    // Cas 1 : HLS.js (PC / Android / Mac récents)
+    // On vérifie que Hls existe pour ne pas faire planter les vieux iPad
+    if (window.Hls && Hls.isSupported()) {
+      if (hls) {
+        hls.destroy(); // Nettoyage propre
+      }
+      hls = new Hls();
+      hls.loadSource(finalUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        video.play();
+      });
+    
+    // Cas 2 : Natif (Safari iOS / iPad)
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = finalUrl;
+      
+      // Astuce pour lancer la vidéo sur iOS sans bloquer
+      var playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(function(error) {
+          // Si l'autoplay est bloqué, on ne fait rien (l'utilisateur cliquera sur play)
+          console.log("Autoplay bloqué par iOS, attente action utilisateur");
+        });
+      }
+    }
   }
 
-  // Plein écran
-  fullscreenBtn.onclick = () => {
-    if (video.requestFullscreen) video.requestFullscreen();
-    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-    else if (video.msRequestFullscreen) video.msRequestFullscreen();
-  };
+  /* --- 3. GESTION DES CHAINES --- */
 
-  // Programme TV (placeholder)
-  function fetchEPG(name) {}
+  // On récupère toutes les divs .channel
+  var channels = document.querySelectorAll(".channel");
+  
+  // Boucle "à l'ancienne" pour compatibilité maximale
+  for (var i = 0; i < channels.length; i++) {
+    (function(index) {
+      var channel = channels[index];
+      var url = channel.getAttribute("data-url");
 
-  // Sélection des chaînes
-  document.querySelectorAll(".channel").forEach(channel => {
-    const name = channel.getAttribute("data-name");
-    const url = channel.getAttribute("data-url");
-    fetchEPG(name);
+      // Clic sur une chaîne
+      channel.onclick = function() {
+        // Gestion de la classe 'active' (rouge)
+        if (currentChannel) {
+          currentChannel.classList.remove("active");
+        }
+        this.classList.add("active");
+        currentChannel = this;
 
-    channel.onclick = () => {
-      const token = tokenInput.value.trim();
-      if (!token) return alert("Merci d’entrer un token.");
-      const finalUrl = url.includes("?token=") ? url : url + "?token=" + encodeURIComponent(token);
+        // Lancement
+        loadChannel(url);
+      };
+    })(i);
+  }
 
-      if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(finalUrl);
-        hls.attachMedia(video);
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = finalUrl;
-      }
-
-      if (currentChannel) currentChannel.classList.remove("active");
-      channel.classList.add("active");
-      currentChannel = channel;
-    };
-  });
-
-  // Navigation chaînes
-  const channels = Array.from(document.querySelectorAll(".channel"));
-
+  // Fonction pour changer de chaîne (Suivant/Précédent)
   function changeChannel(direction) {
     if (!currentChannel) return;
-    const index = channels.indexOf(currentChannel);
-    const newIndex = (index + direction + channels.length) % channels.length;
-    channels[newIndex].click();
-	channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Convertir la NodeList en Array n'est pas supporté partout, on fait manuel
+    var currentIndex = -1;
+    for (var i = 0; i < channels.length; i++) {
+      if (channels[i] === currentChannel) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex !== -1) {
+      var newIndex = currentIndex + direction;
+      // Boucle infinie (si on arrive à la fin, on revient au début)
+      if (newIndex >= channels.length) newIndex = 0;
+      if (newIndex < 0) newIndex = channels.length - 1;
+
+      // Simule un clic sur la nouvelle chaîne
+      channels[newIndex].click();
+      
+      // Scroll automatique pour que la chaîne reste visible
+      if (channels[newIndex].scrollIntoView) {
+        channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
   }
 
-  nextBtn.onclick = () => changeChannel(1);
-  prevBtn.onclick = () => changeChannel(-1);
+  /* --- 4. BOUTONS & CONTROLES --- */
 
-  // Raccourcis clavier : F, M, P, N, S
-  document.addEventListener("keydown", (e) => {
-    // Bloque les raccourcis si on tape dans un champ input ou textarea
-  const tag = document.activeElement.tagName.toLowerCase();
-  if (tag === "input" || tag === "textarea") return;
+  fullscreenBtn.onclick = function() {
+    if (video.requestFullscreen) video.requestFullscreen();
+    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen(); // Safari / Chrome
+    else if (video.mozRequestFullScreen) video.mozRequestFullScreen(); // Firefox
+    else if (video.msRequestFullscreen) video.msRequestFullscreen(); // IE/Edge
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS Natif (Vieux iPad)
+  };
 
-  switch (e.key.toLowerCase()) {
-	case "f":
-	  if (document.fullscreenElement) {
-	    document.exitFullscreen?.();
-	  } else {
-	    video.requestFullscreen?.();
-	  }
-	  break;
+  nextBtn.onclick = function() { changeChannel(1); };
+  prevBtn.onclick = function() { changeChannel(-1); };
 
-    case "m":
-      video.muted = !video.muted;
-      break;
-		  
-    case "s":
-  if (Hls.isSupported()) {
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-  }
-  break;
+  /* --- 5. RACCOURCIS CLAVIER --- */
+  
+  document.addEventListener("keydown", function(e) {
+    // Si on écrit dans l'input, on ignore
+    if (document.activeElement === tokenInput) return;
 
-    case "n":
-      changeChannel(1);
-      break;
-    case "p":
-      changeChannel(-1);
-      break;
-
+    var key = e.key || String.fromCharCode(e.keyCode); // Compatibilité vieux navigateurs
+    
+    switch (key.toLowerCase()) {
+      case "f":
+        fullscreenBtn.click();
+        break;
+      case "m":
+        video.muted = !video.muted;
+        break;
+      case "n":
+        changeChannel(1);
+        break;
+      case "p":
+        changeChannel(-1);
+        break;
     }
   });
-	// ➕ GESTES SWIPE POUR MOBILE (zapping)
-let touchStartX = 0;
-let touchEndX = 0;
 
-const videoArea = document.getElementById("video-container");
+  /* --- 6. SWIPE MOBILE (Tactile) --- */
+  
+  var touchStartX = 0;
+  var touchEndX = 0;
+  var videoArea = document.getElementById("video-container");
 
-videoArea.addEventListener("touchstart", (e) => {
-  touchStartX = e.changedTouches[0].screenX;
-}, false);
+  videoArea.addEventListener("touchstart", function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+  }, false);
 
-videoArea.addEventListener("touchend", (e) => {
-  touchEndX = e.changedTouches[0].screenX;
-  handleSwipe();
-}, false);
+  videoArea.addEventListener("touchend", function(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }, false);
 
-
-function handleSwipe() {
-  const threshold = 80; // px minimum pour que le swipe soit pris en compte
-  const diff = touchEndX - touchStartX;
-
-  if (Math.abs(diff) > threshold) {
-    if (diff > 0) {
-      // 👉 Swipe vers la gauche
-      changeChannel(-1); // Next
-    } else {
-      // 👈 Swipe vers la droite
-      changeChannel(1); // Prev
+  function handleSwipe() {
+    if (Math.abs(touchEndX - touchStartX) > 60) {
+      if (touchEndX < touchStartX) {
+        changeChannel(1); // Swipe Gauche -> Suivant
+      } else {
+        changeChannel(-1); // Swipe Droite -> Précédent
+      }
     }
   }
-}
+
 </script>
 
 </body>
