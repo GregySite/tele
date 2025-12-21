@@ -667,7 +667,7 @@
       }
     }
   }
-/* --- 7. GESTION QR CODE HYBRIDE (DIRECT OU PHOTO) --- */
+/* --- 7. GESTION QR CODE HYBRIDE AVEC TIMEOUT IPAD --- */
   var qrModal = document.getElementById("qr-modal");
   var qrDisplayDiv = document.getElementById("qrcode-display");
   var qrVideoZone = document.getElementById("qr-video-zone");
@@ -675,17 +675,16 @@
   var qrTitle = document.getElementById("qr-title");
   var qrFileInput = document.getElementById("qr-input-file");
   var html5QrCode = null;
+  var cameraTimeout = null;
 
   tokenStatus.onclick = function() {
     var status = tokenStatus.textContent;
     qrModal.style.display = "flex";
     if (qrModal.style.webkitDisplay) qrModal.style.webkitDisplay = "flex";
     
-    // Reset affichage
     qrDisplayDiv.style.display = "none";
     qrVideoZone.style.display = "none";
     qrPhotoZone.style.display = "none";
-    qrTitle.textContent = "Initialisation...";
 
     if (status === "✅") {
        qrTitle.textContent = "Votre Token";
@@ -697,39 +696,53 @@
     }
   };
 
+  function switchToPhotoMode() {
+    if (cameraTimeout) clearTimeout(cameraTimeout);
+    qrVideoZone.style.display = "none";
+    qrPhotoZone.style.display = "block";
+    qrTitle.textContent = "Scanner un Token";
+    // Si la caméra essayait de démarrer, on l'arrête
+    if (html5QrCode) {
+        html5QrCode.stop().catch(function(){});
+    }
+  }
+
   function startScannerLogic() {
-    // On essaie d'abord la caméra en direct (PC/Smartphone)
     qrTitle.textContent = "Recherche caméra...";
     qrVideoZone.style.display = "block";
     
     if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
 
+    // SECURITÉ IPAD : Si après 3 secondes rien ne se passe, on passe en mode photo
+    cameraTimeout = setTimeout(function() {
+        if (qrVideoZone.style.display !== "none") {
+            switchToPhotoMode();
+        }
+    }, 3000);
+
     var config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
     .then(function() {
+        clearTimeout(cameraTimeout);
         qrTitle.textContent = "Visez le QR Code";
     })
     .catch(function(err) {
-        // ECHEC CAMERA DIRECTE -> Passage au mode PHOTO (iPad)
-        console.log("Mode direct échoué, passage mode photo");
-        qrVideoZone.style.display = "none";
-        qrPhotoZone.style.display = "block";
-        qrTitle.textContent = "Scanner un Token";
+        clearTimeout(cameraTimeout);
+        switchToPhotoMode();
     });
   }
 
   qrFileInput.onchange = function(e) {
     if (e.target.files.length === 0) return;
-    qrTitle.textContent = "Analyse de la photo...";
+    qrTitle.textContent = "Analyse...";
     
     var file = e.target.files[0];
     
-    // Utilisation de la méthode scanFile avec traitement d'image forcé
     html5QrCode.scanFile(file, true)
       .then(onScanSuccess)
       .catch(function(err) {
-        alert("QR Code non détecté. Essayez de prendre la photo de plus près et bien nette.");
+        alert("QR Code non détecté. Réessayez avec une photo plus nette.");
         qrTitle.textContent = "Échec de lecture";
       });
   };
@@ -739,18 +752,20 @@
       localStorage.setItem("tvToken", decodedText);
       checkToken(decodedText);
       closeModal();
-      alert("Succès : Token enregistré !");
+      // Alerte de succès supprimée
   }
 
   document.getElementById("close-qr").onclick = closeModal;
 
   function closeModal() {
+    if (cameraTimeout) clearTimeout(cameraTimeout);
     qrModal.style.display = "none";
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(e){ console.log(e); });
+        html5QrCode.stop().catch(function(){});
     }
     qrFileInput.value = "";
   }
+	
 </script>
 </body>
 </html>
