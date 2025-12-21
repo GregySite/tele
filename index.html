@@ -55,12 +55,35 @@
 	#next-btn { margin-top: 1px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
 
 	/* --- CSS POUR MODAL QR CODE --- */
-	#qr-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
-	#qr-content { background: #fff; padding: 20px; border-radius: 8px; text-align: center; color: black; width: 320px; max-width: 90%; }
-	#qr-reader { width: 100%; margin-bottom: 10px; }
-	#qrcode-display { display: flex; justify-content: center; margin-bottom: 15px; }
-	#close-qr { padding: 10px 20px; background: #cc0000; color: white; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; width: 100%; }
-	#tokenStatus { cursor: pointer; } /* Indique que c'est cliquable */
+	/* --- CSS POUR MODAL QR CODE (COMPATIBLE VIEUX IPAD) --- */
+#qr-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 9999;
+    /* Flexbox compatible vieux Webkit */
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+}
+#qr-content { background: #fff; padding: 20px; border-radius: 8px; text-align: center; color: black; width: 320px; max-width: 90%; }
+#qr-reader { width: 100%; margin-bottom: 10px; }
+#qrcode-display { 
+    display: -webkit-flex; 
+    display: flex; 
+    -webkit-justify-content: center; 
+    justify-content: center; 
+    margin-bottom: 15px; 
+}
+#close-qr { padding: 10px 20px; background: #cc0000; color: white; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; width: 100%; }
+#tokenStatus { cursor: pointer; } /* Indique que c'est cliquable */
   </style>
 </head>
 <body>
@@ -653,7 +676,7 @@
       }
     }
   }
-/* --- 7. GESTION QR CODE (SCAN & DISPLAY) --- */
+/* --- 7. GESTION QR CODE (SCAN & DISPLAY - VERSION ES5) --- */
 
   var qrModal = document.getElementById("qr-modal");
   var qrReaderDiv = document.getElementById("qr-reader");
@@ -662,71 +685,72 @@
   var closeQrBtn = document.getElementById("close-qr");
   var html5QrcodeScanner = null;
 
-  // Clic sur le logo de statut (Sablier, V, ou X)
+  // Clic sur le logo de statut
   tokenStatus.addEventListener("click", function() {
     var status = tokenStatus.textContent;
     
     qrModal.style.display = "flex";
-    qrDisplayDiv.innerHTML = ""; // Vider l'ancien QR
-    qrReaderDiv.innerHTML = "";  // Vider le scanner
+    // Force le flex pour vieux safari au moment de l'ouverture
+    if (qrModal.style.webkitDisplay) { qrModal.style.webkitDisplay = "flex"; }
 
-    // CAS 1 : TOKEN OK (✅) -> On AFFICHE le QR Code du token
+    qrDisplayDiv.innerHTML = ""; 
+    qrReaderDiv.innerHTML = "";  
+
+    // CAS 1 : TOKEN OK (✅)
     if (status === "✅") {
        qrTitle.textContent = "Partager ce Token";
        qrReaderDiv.style.display = "none";
        qrDisplayDiv.style.display = "flex";
+       if (qrDisplayDiv.style.webkitDisplay) { qrDisplayDiv.style.webkitDisplay = "flex"; }
        
-       // Génération du QR Code
        new QRCode(qrDisplayDiv, {
            text: tokenInput.value,
            width: 200,
            height: 200
        });
 
-    // CAS 2 : PAS DE TOKEN ou ERREUR (⏳ ou ❌) -> On OUVRE LA CAMERA
+    // CAS 2 : SCANNER (⏳ ou ❌)
     } else {
        qrTitle.textContent = "Scanner un Token";
        qrDisplayDiv.style.display = "none";
        qrReaderDiv.style.display = "block";
 
-       // Lancement du scanner
+       // Vérification basique support caméra
+       if (!navigator.mediaDevices && !navigator.getUserMedia && !window.webkitGetUserMedia) {
+           qrReaderDiv.innerHTML = "<p style='color:red; font-size:12px;'>Caméra non supportée sur cet appareil (iOS trop ancien).</p>";
+           return;
+       }
+
        if(!html5QrcodeScanner) {
            html5QrcodeScanner = new Html5QrcodeScanner(
                "qr-reader", { fps: 10, qrbox: 250 }
            );
-           
            html5QrcodeScanner.render(onScanSuccess, onScanError);
        }
     }
   });
 
-  // Fonction succès du scan
   function onScanSuccess(decodedText, decodedResult) {
-      // On remplit le champ token
       tokenInput.value = decodedText;
-      // On sauvegarde
       localStorage.setItem("tvToken", decodedText);
-      // On lance la vérification
       checkToken(decodedText);
-      // On ferme le modal
       closeModal();
   }
 
   function onScanError(errorMessage) {
-      // On ignore les erreurs de scan en cours (normal tant qu'on ne vise pas un QR)
+      // Rien
   }
 
-  // Fermeture du Modal
   closeQrBtn.onclick = closeModal;
 
   function closeModal() {
       qrModal.style.display = "none";
-      // Si le scanner est actif, on l'arrête proprement pour éteindre la caméra
       if (html5QrcodeScanner) {
-          html5QrcodeScanner.clear().then(_ => {
+          // Correction ici : Utilisation de function() au lieu de =>
+          html5QrcodeScanner.clear().then(function() {
               html5QrcodeScanner = null;
-          }).catch(error => {
-              console.error("Erreur fermeture caméra", error);
+          }).catch(function(error) {
+              console.error("Erreur fermeture", error);
               html5QrcodeScanner = null;
           });
       }
