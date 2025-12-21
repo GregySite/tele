@@ -676,7 +676,7 @@
       }
     }
   }
-/* --- 7. GESTION QR CODE (CORRECTIF CAM ARRIERE & IPAD) --- */
+/* --- 7. GESTION QR CODE (SCAN & PERMISSIONS IPAD) --- */
 
   var qrModal = document.getElementById("qr-modal");
   var qrReaderDiv = document.getElementById("qr-reader");
@@ -685,53 +685,72 @@
   var closeQrBtn = document.getElementById("close-qr");
   var html5QrcodeScanner = null;
 
-  // Clic sur le logo de statut
+  // Fonction pour demander la permission AVANT de lancer le scanner
+  function startCameraWithPermission() {
+    var constraints = { video: { facingMode: "environment" } };
+    
+    // On tente d'accéder au flux pour déclencher la popup de permission Safari
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function(stream) {
+          // Permission accordée ! On coupe le flux de test et on lance le scanner
+          stream.getTracks().forEach(function(track) { track.stop(); });
+          initScanner();
+        })
+        .catch(function(err) {
+          qrReaderDiv.innerHTML = "<p style='color:red'>Erreur caméra : " + err.name + "</p>";
+        });
+    } else {
+      // Pour les très vieux iOS qui utilisent l'ancienne syntaxe
+      var getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if (getUserMedia) {
+        getUserMedia.call(navigator, constraints, function(stream) {
+          stream.getTracks()[0].stop();
+          initScanner();
+        }, function(err) {
+          qrReaderDiv.innerHTML = "<p style='color:red'>Accès refusé.</p>";
+        });
+      } else {
+        qrReaderDiv.innerHTML = "<p style='color:red'>Navigateur incompatible.</p>";
+      }
+    }
+  }
+
+  function initScanner() {
+    if(!html5QrcodeScanner) {
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        "qr-reader", 
+        { 
+          fps: 10, 
+          qrbox: 250,
+          videoConstraints: { facingMode: "environment" },
+          rememberLastUsedCamera: true
+        }
+      );
+      html5QrcodeScanner.render(onScanSuccess, onScanError);
+    }
+  }
+
   tokenStatus.addEventListener("click", function() {
     var status = tokenStatus.textContent;
-    
-    // On affiche le modal
     qrModal.style.display = "flex";
-    
-    // Patch force-flex pour vieux Webkit (Safari)
     if (qrModal.style.webkitDisplay) { qrModal.style.webkitDisplay = "flex"; }
-
+    
     qrDisplayDiv.innerHTML = ""; 
-    qrReaderDiv.innerHTML = "";  
+    qrReaderDiv.innerHTML = "Initialisation de la caméra...";  
 
-    // CAS 1 : TOKEN OK (✅) -> On affiche le QR
     if (status === "✅") {
        qrTitle.textContent = "Partager ce Token";
        qrReaderDiv.style.display = "none";
        qrDisplayDiv.style.display = "flex";
-       if (qrDisplayDiv.style.webkitDisplay) { qrDisplayDiv.style.webkitDisplay = "flex"; }
-       
-       new QRCode(qrDisplayDiv, {
-           text: tokenInput.value,
-           width: 200,
-           height: 200
-       });
-
-    // CAS 2 : SCANNER (⏳ ou ❌) -> On ouvre la caméra
+       new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
     } else {
        qrTitle.textContent = "Scanner un Token";
        qrDisplayDiv.style.display = "none";
        qrReaderDiv.style.display = "block";
-
-       // Initialisation du scanner si pas déjà fait
-       if(!html5QrcodeScanner) {
-           html5QrcodeScanner = new Html5QrcodeScanner(
-               "qr-reader", 
-               { 
-                   fps: 10, 
-                   qrbox: 250,
-                   // CONFIGURATION POUR FORCER LA CAMERA ARRIERE
-                   videoConstraints: {
-                       facingMode: "environment" 
-                   }
-               }
-           );
-           html5QrcodeScanner.render(onScanSuccess, onScanError);
-       }
+       
+       // On lance la procédure de permission
+       startCameraWithPermission();
     }
   });
 
@@ -742,20 +761,16 @@
       closeModal();
   }
 
-  function onScanError(errorMessage) {
-      // Erreurs de scan silencieuses
-  }
+  function onScanError(errorMessage) { }
 
   closeQrBtn.onclick = closeModal;
 
   function closeModal() {
       qrModal.style.display = "none";
       if (html5QrcodeScanner) {
-          // Arrêt propre compatible ES5
           html5QrcodeScanner.clear().then(function() {
               html5QrcodeScanner = null;
           }).catch(function(error) {
-              console.error("Erreur fermeture", error);
               html5QrcodeScanner = null;
           });
       }
