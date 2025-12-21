@@ -66,14 +66,16 @@
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
-  <label for="tokenInput" style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
-  Token :
+  <label for="tokenInput" style="display: flex; align-items: center; gap: 8px; margin: 10px 0; position: relative;">
+  Token : <span style="font-size: 8px; color: #555; position: absolute; top: -12px; left: 0;">v1.6</span>
   <input
     type="text"
     id="tokenInput"
     placeholder="Entrer le token"
-        style="flex: 1; max-width: 280px; padding: 1px; font-size: 16px;"
+    style="flex: 1; max-width: 280px; padding: 1px; font-size: 16px;"
   >
+  <span id="tokenStatus">⏳</span>
+</label>
   <span id="tokenStatus">⏳</span>
 </label>
 
@@ -729,26 +731,39 @@
   qrFileInput.onchange = function(e) {
     if (e.target.files.length === 0) return;
     
-    // Changement ici : on met à jour le titre AVANT de lancer l'analyse
     qrTitle.textContent = "Analyse en cours...";
-    
     var file = e.target.files[0];
     if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
 
-    // Utilisation de la version la plus stable pour vieux appareils
-    html5QrCode.scanFile(file, false) // On passe à false pour éviter le sur-traitement d'image
-      .then(function(text) {
-          onScanSuccess(text);
-      })
-      .catch(function(err) {
-        // En cas d'échec, on réessaie une seule fois avec le mode "true"
-        html5QrCode.scanFile(file, true)
-          .then(onScanSuccess)
-          .catch(function(err2) {
-             alert("QR Code non détecté. Assurez-vous d'être bien éclairé.");
-             qrTitle.textContent = "Échec du scan";
+    // Sécurité : si après 10s c'est toujours sur "Analyse", on prévient l'utilisateur
+    var analysisTimeout = setTimeout(function() {
+        if (qrTitle.textContent === "Analyse en cours...") {
+            alert("L'iPad est trop lent pour analyser cette image. Essayez une photo moins lourde ou de plus loin.");
+            qrTitle.textContent = "Échec (Timeout)";
+        }
+    }, 10000);
+
+    // On attend 500ms avant de lancer pour laisser Safari gérer la fermeture de la caméra native
+    setTimeout(function() {
+        html5QrCode.scanFile(file, false)
+          .then(function(text) {
+              clearTimeout(analysisTimeout);
+              onScanSuccess(text);
+          })
+          .catch(function(err) {
+              // Deuxième tentative plus poussée
+              return html5QrCode.scanFile(file, true);
+          })
+          .then(function(text) {
+              clearTimeout(analysisTimeout);
+              if(text) onScanSuccess(text);
+          })
+          .catch(function(err) {
+              clearTimeout(analysisTimeout);
+              alert("QR Code non détecté.");
+              qrTitle.textContent = "Échec du scan";
           });
-      });
+    }, 500);
   };
 
   function onScanSuccess(decodedText) {
