@@ -676,7 +676,7 @@
       }
     }
   }
-/* --- 7. GESTION QR CODE (FORCE SCAN) --- */
+/* --- 7. GESTION QR CODE (FORCE PERMISSION SAFARI) --- */
 
   var qrModal = document.getElementById("qr-modal");
   var qrReaderDiv = document.getElementById("qr-reader");
@@ -703,23 +703,50 @@
        qrDisplayDiv.style.display = "none";
        qrReaderDiv.style.display = "block";
 
-       // 1. On demande l'accès et on lance le scanner immédiatement
-       // C'est cet appel direct qui force Safari à afficher la demande de permission
-       if(!html5QrcodeScanner) {
-           html5QrcodeScanner = new Html5QrcodeScanner(
-               "qr-reader", 
-               { 
-                   fps: 10, 
-                   qrbox: 250,
-                   videoConstraints: { facingMode: "environment" } 
-               }
-           );
-           
-           // On lance le rendu. Si la permission n'est pas là, le navigateur la demandera ici.
-           html5QrcodeScanner.render(onScanSuccess, onScanError);
+       // --- ETAPE 1 : FORCER LA DEMANDE DE PERMISSION SAFARI ---
+       var constraints = { video: { facingMode: "environment" } };
+       
+       // On utilise la syntaxe universelle pour les droits
+       var promise = null;
+       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+           promise = navigator.mediaDevices.getUserMedia(constraints);
+       } else {
+           var gUM = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+           if (gUM) {
+               promise = new Promise(function(resolve, reject) {
+                   gUM.call(navigator, constraints, resolve, reject);
+               });
+           }
+       }
+
+       if (promise) {
+           promise.then(function(stream) {
+               // Permission accordée ! On arrête ce flux de test...
+               stream.getTracks().forEach(function(t) { t.stop(); });
+               // ... et on lance IMMEDIATEMENT le scanner
+               launchScanner();
+           }).catch(function(err) {
+               qrReaderDiv.innerHTML = "<p style='color:red'>Permission refusée ou erreur : " + err.name + "</p>";
+           });
+       } else {
+           qrReaderDiv.innerHTML = "<p style='color:red'>Caméra non supportée sur ce navigateur.</p>";
        }
     }
   });
+
+  function launchScanner() {
+      if(!html5QrcodeScanner) {
+          html5QrcodeScanner = new Html5QrcodeScanner(
+              "qr-reader", 
+              { 
+                  fps: 10, 
+                  qrbox: { width: 250, height: 250 },
+                  videoConstraints: { facingMode: "environment" } 
+              }
+          );
+          html5QrcodeScanner.render(onScanSuccess, onScanError);
+      }
+  }
 
   function onScanSuccess(decodedText, decodedResult) {
       tokenInput.value = decodedText;
@@ -728,9 +755,7 @@
       closeModal();
   }
 
-  function onScanError(errorMessage) { 
-      // On laisse vide pour ne pas polluer la console de l'iPad
-  }
+  function onScanError(errorMessage) { }
 
   closeQrBtn.onclick = closeModal;
 
