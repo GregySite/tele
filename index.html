@@ -668,7 +668,7 @@
     }
   }
 	
-/* --- 7. GESTION QR CODE (VERSION FINALE AVEC DÉTECTION iOS) --- */
+/* --- 7. GESTION QR CODE (CORRECTION FINALE ANALYSE IPAD) --- */
   var qrModal = document.getElementById("qr-modal");
   var qrDisplayDiv = document.getElementById("qrcode-display");
   var qrVideoZone = document.getElementById("qr-video-zone");
@@ -677,14 +677,12 @@
   var qrFileInput = document.getElementById("qr-input-file");
   var html5QrCode = null;
 
-  // Fonction pour détecter si c'est un vieil iPad/iPhone (iOS < 11)
   function isOldIOS() {
     var ua = navigator.userAgent;
     if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
       var version = ua.match(/OS (\d+)_/);
       if (version && parseInt(version[1], 10) < 11) return true;
     }
-    // Si getUserMedia n'existe pas du tout, c'est aussi un "vieux" device
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
     return false;
   }
@@ -704,7 +702,6 @@
        qrDisplayDiv.innerHTML = "";
        new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
     } else {
-       // DÉTECTION IMMÉDIATE
        if (isOldIOS()) {
            switchToPhotoMode();
        } else {
@@ -722,34 +719,35 @@
   function startScannerLogic() {
     qrTitle.textContent = "Recherche caméra...";
     qrVideoZone.style.display = "block";
-    
     if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
-
     var config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
     html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-    .then(function() {
-        qrTitle.textContent = "Visez le QR Code";
-    })
-    .catch(function(err) {
-        switchToPhotoMode();
-    });
+    .then(function() { qrTitle.textContent = "Visez le QR Code"; })
+    .catch(function(err) { switchToPhotoMode(); });
   }
 
   qrFileInput.onchange = function(e) {
     if (e.target.files.length === 0) return;
-    qrTitle.textContent = "Analyse...";
+    
+    // Changement ici : on met à jour le titre AVANT de lancer l'analyse
+    qrTitle.textContent = "Analyse en cours...";
     
     var file = e.target.files[0];
-    
-    // On recrée l'instance si elle n'existe pas (cas du vieil iPad qui saute start())
     if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
 
-    html5QrCode.scanFile(file, true)
-      .then(onScanSuccess)
+    // Utilisation de la version la plus stable pour vieux appareils
+    html5QrCode.scanFile(file, false) // On passe à false pour éviter le sur-traitement d'image
+      .then(function(text) {
+          onScanSuccess(text);
+      })
       .catch(function(err) {
-        alert("QR Code non détecté. Réessayez avec une photo plus nette.");
-        qrTitle.textContent = "Échec de lecture";
+        // En cas d'échec, on réessaie une seule fois avec le mode "true"
+        html5QrCode.scanFile(file, true)
+          .then(onScanSuccess)
+          .catch(function(err2) {
+             alert("QR Code non détecté. Assurez-vous d'être bien éclairé.");
+             qrTitle.textContent = "Échec du scan";
+          });
       });
   };
 
