@@ -67,16 +67,14 @@
 </head>
 <body>
   <label for="tokenInput" style="display: flex; align-items: center; gap: 8px; margin: 10px 0; position: relative;">
-  Token : <span style="font-size: 8px; color: #555; position: absolute; top: -12px; left: 0;">v1.6</span>
+  Token : <span style="font-size: 8px; color: #555; position: absolute; top: -12px; left: 0;">v1.7</span>
   <input
     type="text"
     id="tokenInput"
     placeholder="Entrer le token"
     style="flex: 1; max-width: 280px; padding: 1px; font-size: 16px;"
   >
-  <span id="tokenStatus">⏳</span>
-</label>
-  <span id="tokenStatus">⏳</span>
+  <span id="tokenStatus" style="font-size: 20px;">⏳</span>
 </label>
 
 
@@ -670,7 +668,7 @@
     }
   }
 	
-/* --- 7. GESTION QR CODE (CORRECTION FINALE ANALYSE IPAD) --- */
+/* --- 7. GESTION QR CODE v1.7 (DESACTIVÉ SUR VIEUX IPAD) --- */
   var qrModal = document.getElementById("qr-modal");
   var qrDisplayDiv = document.getElementById("qrcode-display");
   var qrVideoZone = document.getElementById("qr-video-zone");
@@ -679,91 +677,77 @@
   var qrFileInput = document.getElementById("qr-input-file");
   var html5QrCode = null;
 
-  function isOldIOS() {
+  // Détection pour savoir si on active le clic ou non
+  function canSupportScanner() {
     var ua = navigator.userAgent;
+    // Si c'est un iPad/iPhone avec iOS < 11
     if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
       var version = ua.match(/OS (\d+)_/);
-      if (version && parseInt(version[1], 10) < 11) return true;
+      if (version && parseInt(version[1], 10) < 11) return false;
     }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
-    return false;
+    // Si le navigateur ne supporte aucune forme de caméra
+    if (!navigator.mediaDevices && !navigator.webkitGetUserMedia) return false;
+    return true;
   }
 
-  tokenStatus.onclick = function() {
-    var status = tokenStatus.textContent;
-    qrModal.style.display = "flex";
-    if (qrModal.style.webkitDisplay) qrModal.style.webkitDisplay = "flex";
-    
-    qrDisplayDiv.style.display = "none";
-    qrVideoZone.style.display = "none";
-    qrPhotoZone.style.display = "none";
+  // On active le clic SEULEMENT si l'appareil est assez moderne
+  if (canSupportScanner()) {
+    tokenStatus.style.cursor = "pointer";
+    tokenStatus.onclick = function() {
+      var status = tokenStatus.textContent;
+      qrModal.style.display = "flex";
+      if (qrModal.style.webkitDisplay) qrModal.style.webkitDisplay = "flex";
+      
+      qrDisplayDiv.style.display = "none";
+      qrVideoZone.style.display = "none";
+      qrPhotoZone.style.display = "none";
 
-    if (status === "✅") {
-       qrTitle.textContent = "Votre Token";
-       qrDisplayDiv.style.display = "block";
-       qrDisplayDiv.innerHTML = "";
-       new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
-    } else {
-       if (isOldIOS()) {
-           switchToPhotoMode();
-       } else {
-           startScannerLogic();
-       }
-    }
-  };
-
-  function switchToPhotoMode() {
-    qrVideoZone.style.display = "none";
-    qrPhotoZone.style.display = "block";
-    qrTitle.textContent = "Scanner un Token";
+      if (status === "✅") {
+         qrTitle.textContent = "Votre Token";
+         qrDisplayDiv.style.display = "block";
+         qrDisplayDiv.innerHTML = "";
+         new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
+      } else {
+         startScannerLogic();
+      }
+    };
+  } else {
+    // Sur vieux iPad, on désactive visuellement le clic
+    tokenStatus.style.cursor = "default";
+    console.log("Scanner désactivé sur cet appareil (iOS trop ancien)");
   }
 
   function startScannerLogic() {
     qrTitle.textContent = "Recherche caméra...";
     qrVideoZone.style.display = "block";
     if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
+    
     var config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    
     html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-    .then(function() { qrTitle.textContent = "Visez le QR Code"; })
-    .catch(function(err) { switchToPhotoMode(); });
+    .then(function() { 
+        qrTitle.textContent = "Visez le QR Code"; 
+    })
+    .catch(function(err) {
+        // Fallback photo pour les smartphones récents dont la caméra bug
+        qrVideoZone.style.display = "none";
+        qrPhotoZone.style.display = "block";
+        qrTitle.textContent = "Prendre une photo";
+    });
   }
 
   qrFileInput.onchange = function(e) {
     if (e.target.files.length === 0) return;
-    
-    qrTitle.textContent = "Analyse en cours...";
+    qrTitle.textContent = "Analyse...";
     var file = e.target.files[0];
     if (!html5QrCode) { html5QrCode = new Html5Qrcode("reader"); }
 
-    // Sécurité : si après 10s c'est toujours sur "Analyse", on prévient l'utilisateur
-    var analysisTimeout = setTimeout(function() {
-        if (qrTitle.textContent === "Analyse en cours...") {
-            alert("L'iPad est trop lent pour analyser cette image. Essayez une photo moins lourde ou de plus loin.");
-            qrTitle.textContent = "Échec (Timeout)";
-        }
-    }, 10000);
-
-    // On attend 500ms avant de lancer pour laisser Safari gérer la fermeture de la caméra native
-    setTimeout(function() {
-        html5QrCode.scanFile(file, false)
-          .then(function(text) {
-              clearTimeout(analysisTimeout);
-              onScanSuccess(text);
-          })
-          .catch(function(err) {
-              // Deuxième tentative plus poussée
-              return html5QrCode.scanFile(file, true);
-          })
-          .then(function(text) {
-              clearTimeout(analysisTimeout);
-              if(text) onScanSuccess(text);
-          })
-          .catch(function(err) {
-              clearTimeout(analysisTimeout);
-              alert("QR Code non détecté.");
-              qrTitle.textContent = "Échec du scan";
-          });
-    }, 500);
+    html5QrCode.scanFile(file, true)
+      .then(onScanSuccess)
+      .catch(function(err) {
+        alert("QR Code non détecté.");
+        qrTitle.textContent = "Échec";
+      });
   };
 
   function onScanSuccess(decodedText) {
