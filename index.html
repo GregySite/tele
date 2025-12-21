@@ -55,36 +55,15 @@
 	#next-btn { margin-top: 1px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
 
 	/* --- CSS POUR MODAL QR CODE --- */
-	/* --- CSS POUR MODAL QR CODE (COMPATIBLE VIEUX IPAD) --- */
-#qr-modal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.95);
-    z-index: 9999;
-    /* Flexbox compatible vieux Webkit */
-    display: -webkit-flex;
-    display: flex;
-    -webkit-justify-content: center;
-    justify-content: center;
-    -webkit-align-items: center;
-    align-items: center;
-    -webkit-flex-direction: column;
-    flex-direction: column;
-}
+#qr-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
 #qr-content { background: #fff; padding: 20px; border-radius: 8px; text-align: center; color: black; width: 320px; max-width: 90%; }
 #qr-reader { width: 100%; margin-bottom: 10px; }
-#qrcode-display { 
-    display: -webkit-flex; 
-    display: flex; 
-    -webkit-justify-content: center; 
-    justify-content: center; 
-    margin-bottom: 15px; 
-}
+#qrcode-display { display: flex; justify-content: center; margin-bottom: 15px; }
 #close-qr { padding: 10px 20px; background: #cc0000; color: white; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; width: 100%; }
 #tokenStatus { cursor: pointer; } /* Indique que c'est cliquable */
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
   <label for="tokenInput" style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
@@ -455,6 +434,14 @@
     <button id="close-qr">Fermer</button>
   </div>
 </div>
+	<div id="qr-modal">
+  <div id="qr-content">
+    <h3 id="qr-title" style="margin-top:0">Scan / QR</h3>
+    <div id="qrcode-display"></div>
+    <div id="qr-reader"></div>
+    <button id="close-qr">Fermer</button>
+  </div>
+</div>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
   /* --- VARIABLES GLOBALES (Version compatible anciens iPad) --- */
@@ -676,7 +663,7 @@
       }
     }
   }
-/* --- 7. TEST FORCE CAMERA (VERSION ULTIME IPAD) --- */
+/* --- 7. GESTION QR CODE (SCAN & DISPLAY) --- */
 
   var qrModal = document.getElementById("qr-modal");
   var qrReaderDiv = document.getElementById("qr-reader");
@@ -685,78 +672,73 @@
   var closeQrBtn = document.getElementById("close-qr");
   var html5QrcodeScanner = null;
 
+  // Clic sur le logo de statut (Sablier, V, ou X)
   tokenStatus.addEventListener("click", function() {
     var status = tokenStatus.textContent;
-    qrModal.style.display = "flex";
     
-    qrDisplayDiv.innerHTML = ""; 
-    qrReaderDiv.innerHTML = "Demande d'accès en cours...";  
+    qrModal.style.display = "flex";
+    qrDisplayDiv.innerHTML = ""; // Vider l'ancien QR
+    qrReaderDiv.innerHTML = "";  // Vider le scanner
 
+    // CAS 1 : TOKEN OK (✅) -> On AFFICHE le QR Code du token
     if (status === "✅") {
        qrTitle.textContent = "Partager ce Token";
        qrReaderDiv.style.display = "none";
        qrDisplayDiv.style.display = "flex";
-       new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
+       
+       // Génération du QR Code
+       new QRCode(qrDisplayDiv, {
+           text: tokenInput.value,
+           width: 200,
+           height: 200
+       });
+
+    // CAS 2 : PAS DE TOKEN ou ERREUR (⏳ ou ❌) -> On OUVRE LA CAMERA
     } else {
        qrTitle.textContent = "Scanner un Token";
        qrDisplayDiv.style.display = "none";
        qrReaderDiv.style.display = "block";
-       
-       // METHODE DIRECTE SANS WRAPPER
-       // On essaie les 3 syntaxes possibles pour les vieux iOS
-       var n = navigator;
-       var ask = (n.mediaDevices && n.mediaDevices.getUserMedia) 
-                 ? n.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                 : (n.webkitGetUserMedia ? n.webkitGetUserMedia({ video: true }) : null);
 
-       if (ask && ask.then) {
-           // Version moderne (Promise)
-           ask.then(function(stream) {
-               qrReaderDiv.innerHTML = "Accès autorisé ! Lancement du scanner...";
-               stream.getTracks().forEach(function(t) { t.stop(); });
-               lancerScanner();
-           }).catch(function(err) {
-               qrReaderDiv.innerHTML = "Erreur : " + err.name;
-           });
-       } else if (n.webkitGetUserMedia) {
-           // Version très ancienne (Callback)
-           n.webkitGetUserMedia({ video: true }, function(stream) {
-               stream.getTracks()[0].stop();
-               lancerScanner();
-           }, function(err) {
-               qrReaderDiv.innerHTML = "Refusé ou Erreur.";
-           });
-       } else {
-           qrReaderDiv.innerHTML = "Votre iPad bloque l'accès caméra sur ce site.";
+       // Lancement du scanner
+       if(!html5QrcodeScanner) {
+           html5QrcodeScanner = new Html5QrcodeScanner(
+               "qr-reader", { fps: 10, qrbox: 250 }
+           );
+           
+           html5QrcodeScanner.render(onScanSuccess, onScanError);
        }
     }
   });
 
-  function lancerScanner() {
-    if(!html5QrcodeScanner) {
-      html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { 
-          fps: 10, 
-          qrbox: 250,
-          videoConstraints: { facingMode: "environment" }
-      });
-      html5QrcodeScanner.render(onScanSuccess, onScanError);
-    }
-  }
-
-  function onScanSuccess(decodedText) {
+  // Fonction succès du scan
+  function onScanSuccess(decodedText, decodedResult) {
+      // On remplit le champ token
       tokenInput.value = decodedText;
+      // On sauvegarde
       localStorage.setItem("tvToken", decodedText);
+      // On lance la vérification
       checkToken(decodedText);
+      // On ferme le modal
       closeModal();
   }
 
-  function onScanError(e) { }
+  function onScanError(errorMessage) {
+      // On ignore les erreurs de scan en cours (normal tant qu'on ne vise pas un QR)
+  }
+
+  // Fermeture du Modal
   closeQrBtn.onclick = closeModal;
 
   function closeModal() {
       qrModal.style.display = "none";
+      // Si le scanner est actif, on l'arrête proprement pour éteindre la caméra
       if (html5QrcodeScanner) {
-          html5QrcodeScanner.clear().then(function() { html5QrcodeScanner = null; });
+          html5QrcodeScanner.clear().then(_ => {
+              html5QrcodeScanner = null;
+          }).catch(error => {
+              console.error("Erreur fermeture caméra", error);
+              html5QrcodeScanner = null;
+          });
       }
   }
 </script>
