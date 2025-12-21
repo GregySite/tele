@@ -430,16 +430,18 @@
   <div id="qr-content">
     <h3 id="qr-title" style="margin-top:0">Scan / QR</h3>
     <div id="qrcode-display"></div>
-    <div id="qr-reader"></div>
-    <button id="close-qr">Fermer</button>
-  </div>
-</div>
-	<div id="qr-modal">
-  <div id="qr-content">
-    <h3 id="qr-title" style="margin-top:0">Scan / QR</h3>
-    <div id="qrcode-display"></div>
-    <div id="qr-reader"></div>
-    <button id="close-qr">Fermer</button>
+    
+    <div id="qr-reader-area">
+      <p style="font-size:14px; color:#333; margin-bottom:15px;">
+        Prenez une photo bien nette du QR Code.
+      </p>
+      <label for="qr-input-file" style="background-color: #007bff; color: white; padding: 12px 20px; border-radius: 5px; cursor: pointer; display: inline-block; margin-bottom: 20px; font-weight: bold;">
+        Ouvrir l'appareil photo
+      </label>
+      <input type="file" id="qr-input-file" accept="image/*" capture="environment" style="display: none;">
+    </div>
+    
+    <button id="close-qr">Annuler</button>
   </div>
 </div>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -663,83 +665,68 @@
       }
     }
   }
-/* --- 7. GESTION QR CODE (SCAN & DISPLAY) --- */
+/* --- 7. GESTION QR CODE (VERSION PHOTO COMPATIBLE IPAD) --- */
 
   var qrModal = document.getElementById("qr-modal");
-  var qrReaderDiv = document.getElementById("qr-reader");
   var qrDisplayDiv = document.getElementById("qrcode-display");
+  var qrReaderArea = document.getElementById("qr-reader-area");
   var qrTitle = document.getElementById("qr-title");
+  var qrFileInput = document.getElementById("qr-input-file");
   var closeQrBtn = document.getElementById("close-qr");
-  var html5QrcodeScanner = null;
 
-  // Clic sur le logo de statut (Sablier, V, ou X)
-  tokenStatus.addEventListener("click", function() {
+  // On ne crée pas l'objet tout de suite pour éviter de faire planter Safari au démarrage
+  var scannerInstance = null;
+
+  tokenStatus.onclick = function() {
     var status = tokenStatus.textContent;
-    
     qrModal.style.display = "flex";
-    qrDisplayDiv.innerHTML = ""; // Vider l'ancien QR
-    qrReaderDiv.innerHTML = "";  // Vider le scanner
-
-    // CAS 1 : TOKEN OK (✅) -> On AFFICHE le QR Code du token
+    if (qrModal.style.webkitDisplay) qrModal.style.webkitDisplay = "flex";
+    
+    qrDisplayDiv.innerHTML = ""; 
+    
     if (status === "✅") {
        qrTitle.textContent = "Partager ce Token";
-       qrReaderDiv.style.display = "none";
-       qrDisplayDiv.style.display = "flex";
-       
-       // Génération du QR Code
-       new QRCode(qrDisplayDiv, {
-           text: tokenInput.value,
-           width: 200,
-           height: 200
-       });
-
-    // CAS 2 : PAS DE TOKEN ou ERREUR (⏳ ou ❌) -> On OUVRE LA CAMERA
+       qrReaderArea.style.display = "none";
+       qrDisplayDiv.style.display = "block";
+       new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
     } else {
        qrTitle.textContent = "Scanner un Token";
        qrDisplayDiv.style.display = "none";
-       qrReaderDiv.style.display = "block";
-
-       // Lancement du scanner
-       if(!html5QrcodeScanner) {
-           html5QrcodeScanner = new Html5QrcodeScanner(
-               "qr-reader", { fps: 10, qrbox: 250 }
-           );
-           
-           html5QrcodeScanner.render(onScanSuccess, onScanError);
-       }
+       qrReaderArea.style.display = "block";
     }
-  });
+  };
 
-  // Fonction succès du scan
-  function onScanSuccess(decodedText, decodedResult) {
-      // On remplit le champ token
-      tokenInput.value = decodedText;
-      // On sauvegarde
-      localStorage.setItem("tvToken", decodedText);
-      // On lance la vérification
-      checkToken(decodedText);
-      // On ferme le modal
-      closeModal();
-  }
+  qrFileInput.onchange = function(e) {
+    if (e.target.files.length === 0) return;
+    
+    var file = e.target.files[0];
+    qrTitle.textContent = "Analyse...";
 
-  function onScanError(errorMessage) {
-      // On ignore les erreurs de scan en cours (normal tant qu'on ne vise pas un QR)
-  }
+    // On initialise la librairie SEULEMENT quand on en a besoin
+    if (!scannerInstance) {
+        scannerInstance = new Html5Qrcode("qr-reader-area");
+    }
 
-  // Fermeture du Modal
+    // Utilisation de la méthode scanFile
+    scannerInstance.scanFile(file, true)
+      .then(function(decodedText) {
+        tokenInput.value = decodedText;
+        localStorage.setItem("tvToken", decodedText);
+        checkToken(decodedText);
+        closeModal();
+        alert("Token mis à jour !");
+      })
+      .catch(function(err) {
+        alert("Erreur de lecture : Assurez-vous que le QR code est bien au centre et net.");
+        qrTitle.textContent = "Échec du scan";
+      });
+  };
+
   closeQrBtn.onclick = closeModal;
 
   function closeModal() {
-      qrModal.style.display = "none";
-      // Si le scanner est actif, on l'arrête proprement pour éteindre la caméra
-      if (html5QrcodeScanner) {
-          html5QrcodeScanner.clear().then(_ => {
-              html5QrcodeScanner = null;
-          }).catch(error => {
-              console.error("Erreur fermeture caméra", error);
-              html5QrcodeScanner = null;
-          });
-      }
+    qrModal.style.display = "none";
+    qrFileInput.value = ""; // Reset
   }
 </script>
 
