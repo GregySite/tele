@@ -5,58 +5,79 @@
   <title>Greg TV</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; }
+  html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
     body { margin: 0; font-family: sans-serif; background: #121212; color: white; display: flex; flex-direction: column; height: 100vh; }
-    #tokenInput { padding: 10px; font-size: 16px; border: none; background: #1e1e1e; color: white; border-radius: 4px; }
-    #main { display: flex; height: 100vh; overflow: hidden; }
-    #channel-list { flex: 0 0 240px; min-width: 200px; max-width: 300px; overflow-y: auto; background-color: #1a1a1a; padding: 10px; }
+    #token-input { padding: 10px; font-size: 16px; border: none; width: 20%; box-sizing: border-box; background: #1e1e1e; color: white; }
+	#main {display: flex; height: 100vh;}
+    #channel-list {flex: 0 0 240px; /* largeur de base */  min-width: 200px;     /* ne jamais descendre en dessous */  max-width: 300px;     /* ne jamais dépasser cette taille */  overflow-y: auto;  background-color: #1a1a1a;  padding: 10px;}
     .channel { border: 1px solid #333; border-radius: 5px; padding: 10px; margin-bottom: 10px; cursor: pointer; background: #222; }
     .channel.active { border-color: red; color: red; font-weight: bold; }
     .channel img { width: 50px; height: auto; vertical-align: middle; margin-right: 10px; }
-    #video-container { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .channel-name { vertical-align: middle; display: inline-block; }
+    .epg { font-size: 12px; color: #ccc; margin-left: 60px; margin-top: 4px; }
+    #video-container {  flex: 1;  padding: 20px;  display: flex;  flex-direction: column;  justify-content: flex-start;}
 
-    @media (max-width: 768px) {
-      #main { flex-direction: column; }
-      #video-container { order: 1; flex: none; position: sticky; top: 0; z-index: 100; background: #121212; padding: 10px; }
-      #channel-list { order: 2; flex: 1; width: 100%; max-width: 100%; }
-    }
+	@media (max-width: 768px) {
+	#main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+	}
 
-    video { width: 100%; background: black; border-radius: 8px; }
-    button { padding: 8px 15px; background: #333; color: white; border: none; cursor: pointer; border-radius: 4px; }
-    button:hover { background: #444; }
+	#video-container {
+    order: 1;
+    flex: none;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	background: #121212;
+	}
 
-    /* Style de la fenêtre QR Code */
-    #qr-modal {
-      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: #222; padding: 20px; border: 2px solid #444; border-radius: 10px;
-      z-index: 2000; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    }
-    #qr-display { background: white; padding: 10px; display: inline-block; border-radius: 5px; margin-bottom: 10px; }
-    #qr-reader { width: 300px; margin: 0 auto; border-radius: 8px; overflow: hidden; }
+    #channel-list {
+    order: 2;
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow-y: auto;
+	}
+	}
+
+    video { width: 100%; height: auto; max-height: 100vh; /* limite la hauteur pour laisser voir les boutons */ background: black;}
+    #fullscreen-btn { margin-top: 1px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
+	#prev-btn { margin-top: 1px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
+	#next-btn { margin-top: 1px; padding: 8px; font-size: 14px; background: #333; color: white; border: none; cursor: pointer; }
+
+	/* --- CSS POUR MODAL QR CODE --- */
+	#qr-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+	#qr-content { background: #fff; padding: 20px; border-radius: 8px; text-align: center; color: black; width: 320px; max-width: 90%; }
+	#qr-reader { width: 100%; margin-bottom: 10px; }
+	#qrcode-display { display: flex; justify-content: center; margin-bottom: 15px; }
+	#close-qr { padding: 10px 20px; background: #cc0000; color: white; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; width: 100%; }
+	#tokenStatus { cursor: pointer; } /* Indique que c'est cliquable */
   </style>
 </head>
 <body>
-
-<label for="tokenInput" style="display: flex; align-items: center; gap: 8px; margin: 10px;">
+  <label for="tokenInput" style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
   Token :
-  <input type="text" id="tokenInput" placeholder="Entrer le token" style="flex: 1; max-width: 280px;">
-  <span id="tokenStatus" onclick="handleIconClick()" style="cursor:pointer; font-size: 22px; padding: 5px;" title="Cliquer pour Scanner ou Partager">⏳</span>
+  <input
+    type="text"
+    id="tokenInput"
+    placeholder="Entrer le token"
+        style="flex: 1; max-width: 280px; padding: 1px; font-size: 16px;"
+  >
+  <span id="tokenStatus">⏳</span>
 </label>
 
-<div id="qr-modal">
-    <div id="qr-content">
-        <div id="qr-display"></div> 
-        <div id="qr-reader" style="display:none;"></div> 
-    </div>
-    <p id="qr-text" style="margin: 10px 0; font-size: 14px; color: #bbb;"></p>
-    <button onclick="closeQRModal()" style="background: #cc0000;">Fermer</button>
-</div>
 
-<div id="main">
-  <div id="channel-list">
+  <div id="main">
+    <div id="channel-list">
       <!-- Liste des chaînes -->
 
 <div class="channel" data-name="tf1" data-url="https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8">
@@ -394,31 +415,40 @@
 	
 
     <div id="video-container">
-    <video id="video" playsinline webkit-playsinline controls autoplay></video>
-    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
-      <button id="prev-btn">&lt; Prev</button>
-      <button id="fullscreen-btn">Plein écran</button>
-      <button id="next-btn">Next &gt;</button>
+      <video id="video" playsinline webkit-playsinline controls autoplay></video>
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+      <button id="prev-btn"      >&lt; Prev  </button>
+      <button id="fullscreen-btn">Full screen</button>
+      <button id="next-btn"      >Next &gt;  </button>
     </div>
+
+    </div>
+  </div> <!-- Fin de #main -->
+<div id="qr-modal">
+  <div id="qr-content">
+    <h3 id="qr-title" style="margin-top:0">Scan / QR</h3>
+    <div id="qrcode-display"></div>
+    <div id="qr-reader"></div>
+    <button id="close-qr">Fermer</button>
   </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
+  /* --- VARIABLES GLOBALES (Version compatible anciens iPad) --- */
   var tokenInput = document.getElementById("tokenInput");
   var tokenStatus = document.getElementById("tokenStatus");
   var video = document.getElementById("video");
-  var hls = null;
+  var fullscreenBtn = document.getElementById("fullscreen-btn");
+  var nextBtn = document.getElementById("next-btn");
+  var prevBtn = document.getElementById("prev-btn");
   var currentChannel = null;
-  var html5QrCode = null;
+  var hls = null;
 
-  /* --- GESTION DU TOKEN --- */
-
+  /* --- 1. GESTION DU TOKEN --- */
+  
+  // Fonction de vérification compatible (XMLHttpRequest au lieu de fetch)
   function checkToken(token) {
-    if (!token) {
-        tokenStatus.textContent = "❌";
-        return;
-    }
+    if (!token) return;
     var testUrl = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
     tokenStatus.textContent = "⏳";
     
@@ -426,123 +456,282 @@
     xhr.open("HEAD", testUrl, true);
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
-        tokenStatus.textContent = (xhr.status >= 200 && xhr.status < 400) ? "✅" : "❌";
+        if (xhr.status >= 200 && xhr.status < 400) {
+          tokenStatus.textContent = "✅";
+        } else {
+          tokenStatus.textContent = "❌";
+        }
       }
     };
     xhr.send();
   }
 
-  // Chargement / Sauvegarde
+  // Chargement au démarrage
   var savedToken = localStorage.getItem("tvToken");
-  if (savedToken) { tokenInput.value = savedToken; checkToken(savedToken); }
+  if (savedToken) {
+    tokenInput.value = savedToken;
+    checkToken(savedToken);
+  }
 
+  // Sauvegarde à la saisie
   tokenInput.addEventListener("input", function(e) {
     var token = e.target.value.trim();
     localStorage.setItem("tvToken", token);
     checkToken(token);
   });
 
-  /* --- FEATURE QR CODE (SCAN & GÉNÉRATION) --- */
-
-  function handleIconClick() {
-    var modal = document.getElementById('qr-modal');
-    var displayZone = document.getElementById('qr-display');
-    var readerZone = document.getElementById('qr-reader');
-    var statusText = document.getElementById('qr-text');
-    var token = tokenInput.value.trim();
-
-    modal.style.display = 'block';
-
-    // CAS 1 : TOKEN VALIDE -> ON GÉNÈRE LE QR CODE POUR PARTAGER
-    if (tokenStatus.textContent === "✅") {
-        displayZone.innerHTML = "";
-        displayZone.style.display = "block";
-        readerZone.style.display = "none";
-        statusText.innerText = "Scanner ce code pour transférer le token";
-        
-        new QRCode(displayZone, {
-            text: window.location.origin + window.location.pathname + "?token=" + encodeURIComponent(token),
-            width: 180, height: 180
-        });
-    } 
-    // CAS 2 : PAS DE TOKEN -> ON OUVRE LA CAMÉRA POUR RECEVOIR
-    else {
-        displayZone.style.display = "none";
-        readerZone.style.display = "block";
-        statusText.innerText = "Présentez un QR Code devant la caméra";
-
-        html5QrCode = new Html5Qrcode("qr-reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: 200 },
-            function(decodedText) {
-                // Extraction du token si c'est un lien
-                var finalToken = decodedText;
-                if (decodedText.indexOf("token=") !== -1) {
-                    finalToken = decodedText.split("token=")[1].split("&")[0];
-                }
-                tokenInput.value = finalToken;
-                localStorage.setItem("tvToken", finalToken);
-                checkToken(finalToken);
-                closeQRModal();
-            }
-        ).catch(err => { statusText.innerText = "Erreur caméra ou accès refusé."; });
-    }
-  }
-
-  function closeQRModal() {
-    document.getElementById('qr-modal').style.display = 'none';
-    if (html5QrCode) {
-        html5QrCode.stop().then(function() { html5QrCode.clear(); }).catch(function(){});
-    }
-  }
-
-  /* --- GESTION DU PLAYER --- */
+  /* --- 2. GESTION DU PLAYER --- */
 
   function loadChannel(url) {
     var token = tokenInput.value.trim();
-    if (!token) return alert("Token manquant.");
+    if (!token) {
+      alert("Merci d'entrer un token valide.");
+      return;
+    }
 
-    var finalUrl = url.indexOf("?token=") === -1 ? url + "?token=" + encodeURIComponent(token) : url;
+    // Ajout du token à l'URL
+    var finalUrl = url;
+    if (url.indexOf("?token=") === -1) {
+       finalUrl = url + "?token=" + encodeURIComponent(token);
+    }
 
+    // Cas 1 : HLS.js (PC / Android / Mac récents)
+    // On vérifie que Hls existe pour ne pas faire planter les vieux iPad
     if (window.Hls && Hls.isSupported()) {
-      if (hls) hls.destroy();
+      if (hls) {
+        hls.destroy(); // Nettoyage propre
+      }
       hls = new Hls();
       hls.loadSource(finalUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+      hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        video.play();
+      });
+    
+    // Cas 2 : Natif (Safari iOS / iPad)
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      
+      // --- AJOUT : Gestion automatique du fallback HTTPS -> HTTP ---
+      video.onerror = function() {
+          var currentUrl = video.src;
+          // Si c'est la chaine Israel Torah et qu'on est en HTTPS
+          if (currentUrl.indexOf("israeltorah") !== -1 && currentUrl.indexOf("https:") !== -1) {
+              console.log("Erreur HTTPS détectée sur iPad, bascule vers HTTP...");
+              // On remplace https par http et on relance immédiatement
+              video.src = currentUrl.replace("https:", "http:");
+              video.play();
+          }
+      };
+      // ------------------------------------------------------------
+
       video.src = finalUrl;
-      video.play();
+      
+      // Astuce pour lancer la vidéo sur iOS sans bloquer
+      var playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(function(error) {
+          // Si l'autoplay est bloqué, on ne fait rien (l'utilisateur cliquera sur play)
+          console.log("Autoplay bloqué par iOS, attente action utilisateur");
+        });
+      }
     }
   }
 
-  // Initialisation des clics chaînes
+  /* --- 3. GESTION DES CHAINES --- */
+
+  // On récupère toutes les divs .channel
   var channels = document.querySelectorAll(".channel");
+  
+  // Boucle "à l'ancienne" pour compatibilité maximale
   for (var i = 0; i < channels.length; i++) {
-    channels[i].onclick = function() {
-      if (currentChannel) currentChannel.classList.remove("active");
-      this.classList.add("active");
-      currentChannel = this;
-      loadChannel(this.getAttribute("data-url"));
-    };
+    (function(index) {
+      var channel = channels[index];
+      var url = channel.getAttribute("data-url");
+
+      // Clic sur une chaîne
+      channel.onclick = function() {
+        // Gestion de la classe 'active' (rouge)
+        if (currentChannel) {
+          currentChannel.classList.remove("active");
+        }
+        this.classList.add("active");
+        currentChannel = this;
+
+        // Lancement
+        loadChannel(url);
+      };
+    })(i);
   }
 
-  /* --- CONTRÔLES --- */
-  document.getElementById("fullscreen-btn").onclick = function() {
+  // Fonction pour changer de chaîne (Suivant/Précédent)
+  function changeChannel(direction) {
+    if (!currentChannel) return;
+    
+    // Convertir la NodeList en Array n'est pas supporté partout, on fait manuel
+    var currentIndex = -1;
+    for (var i = 0; i < channels.length; i++) {
+      if (channels[i] === currentChannel) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex !== -1) {
+      var newIndex = currentIndex + direction;
+      // Boucle infinie (si on arrive à la fin, on revient au début)
+      if (newIndex >= channels.length) newIndex = 0;
+      if (newIndex < 0) newIndex = channels.length - 1;
+
+      // Simule un clic sur la nouvelle chaîne
+      channels[newIndex].click();
+      
+      // Scroll automatique pour que la chaîne reste visible
+      if (channels[newIndex].scrollIntoView) {
+        channels[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }
+
+  /* --- 4. BOUTONS & CONTROLES --- */
+
+  fullscreenBtn.onclick = function() {
     if (video.requestFullscreen) video.requestFullscreen();
-    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen(); // Safari / Chrome
+    else if (video.mozRequestFullScreen) video.mozRequestFullScreen(); // Firefox
+    else if (video.msRequestFullscreen) video.msRequestFullscreen(); // IE/Edge
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS Natif (Vieux iPad)
   };
 
-  // Gestion auto du token via URL (Lien Magique)
-  var params = new URLSearchParams(window.location.search);
-  if (params.get('token')) {
-      var t = params.get('token');
-      tokenInput.value = t;
-      localStorage.setItem("tvToken", t);
-      checkToken(t);
+  nextBtn.onclick = function() { changeChannel(1); };
+  prevBtn.onclick = function() { changeChannel(-1); };
+
+  /* --- 5. RACCOURCIS CLAVIER --- */
+  
+  document.addEventListener("keydown", function(e) {
+    // Si on écrit dans l'input, on ignore
+    if (document.activeElement === tokenInput) return;
+
+    var key = e.key || String.fromCharCode(e.keyCode); // Compatibilité vieux navigateurs
+    
+    switch (key.toLowerCase()) {
+      case "f":
+        fullscreenBtn.click();
+        break;
+      case "m":
+        video.muted = !video.muted;
+        break;
+      case "n":
+        changeChannel(1);
+        break;
+      case "p":
+        changeChannel(-1);
+        break;
+    }
+  });
+
+  /* --- 6. SWIPE MOBILE (Tactile) --- */
+  
+  var touchStartX = 0;
+  var touchEndX = 0;
+  var videoArea = document.getElementById("video-container");
+
+  videoArea.addEventListener("touchstart", function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+  }, false);
+
+  videoArea.addEventListener("touchend", function(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }, false);
+
+  function handleSwipe() {
+    if (Math.abs(touchEndX - touchStartX) > 60) {
+      if (touchEndX < touchStartX) {
+        changeChannel(1); // Swipe Gauche -> Suivant
+      } else {
+        changeChannel(-1); // Swipe Droite -> Précédent
+      }
+    }
+  }
+/* --- 7. GESTION QR CODE (SCAN & DISPLAY) --- */
+
+  var qrModal = document.getElementById("qr-modal");
+  var qrReaderDiv = document.getElementById("qr-reader");
+  var qrDisplayDiv = document.getElementById("qrcode-display");
+  var qrTitle = document.getElementById("qr-title");
+  var closeQrBtn = document.getElementById("close-qr");
+  var html5QrcodeScanner = null;
+
+  // Clic sur le logo de statut (Sablier, V, ou X)
+  tokenStatus.addEventListener("click", function() {
+    var status = tokenStatus.textContent;
+    
+    qrModal.style.display = "flex";
+    qrDisplayDiv.innerHTML = ""; // Vider l'ancien QR
+    qrReaderDiv.innerHTML = "";  // Vider le scanner
+
+    // CAS 1 : TOKEN OK (✅) -> On AFFICHE le QR Code du token
+    if (status === "✅") {
+       qrTitle.textContent = "Partager ce Token";
+       qrReaderDiv.style.display = "none";
+       qrDisplayDiv.style.display = "flex";
+       
+       // Génération du QR Code
+       new QRCode(qrDisplayDiv, {
+           text: tokenInput.value,
+           width: 200,
+           height: 200
+       });
+
+    // CAS 2 : PAS DE TOKEN ou ERREUR (⏳ ou ❌) -> On OUVRE LA CAMERA
+    } else {
+       qrTitle.textContent = "Scanner un Token";
+       qrDisplayDiv.style.display = "none";
+       qrReaderDiv.style.display = "block";
+
+       // Lancement du scanner
+       if(!html5QrcodeScanner) {
+           html5QrcodeScanner = new Html5QrcodeScanner(
+               "qr-reader", { fps: 10, qrbox: 250 }
+           );
+           
+           html5QrcodeScanner.render(onScanSuccess, onScanError);
+       }
+    }
+  });
+
+  // Fonction succès du scan
+  function onScanSuccess(decodedText, decodedResult) {
+      // On remplit le champ token
+      tokenInput.value = decodedText;
+      // On sauvegarde
+      localStorage.setItem("tvToken", decodedText);
+      // On lance la vérification
+      checkToken(decodedText);
+      // On ferme le modal
+      closeModal();
   }
 
+  function onScanError(errorMessage) {
+      // On ignore les erreurs de scan en cours (normal tant qu'on ne vise pas un QR)
+  }
+
+  // Fermeture du Modal
+  closeQrBtn.onclick = closeModal;
+
+  function closeModal() {
+      qrModal.style.display = "none";
+      // Si le scanner est actif, on l'arrête proprement pour éteindre la caméra
+      if (html5QrcodeScanner) {
+          html5QrcodeScanner.clear().then(_ => {
+              html5QrcodeScanner = null;
+          }).catch(error => {
+              console.error("Erreur fermeture caméra", error);
+              html5QrcodeScanner = null;
+          });
+      }
+  }
 </script>
+
 </body>
 </html>
