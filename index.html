@@ -676,7 +676,7 @@
       }
     }
   }
-/* --- 7. GESTION QR CODE (FORCE PERMISSION SAFARI) --- */
+/* --- 7. TEST FORCE CAMERA (VERSION ULTIME IPAD) --- */
 
   var qrModal = document.getElementById("qr-modal");
   var qrReaderDiv = document.getElementById("qr-reader");
@@ -688,10 +688,9 @@
   tokenStatus.addEventListener("click", function() {
     var status = tokenStatus.textContent;
     qrModal.style.display = "flex";
-    if (qrModal.style.webkitDisplay) { qrModal.style.webkitDisplay = "flex"; }
     
     qrDisplayDiv.innerHTML = ""; 
-    qrReaderDiv.innerHTML = "";  
+    qrReaderDiv.innerHTML = "Demande d'accès en cours...";  
 
     if (status === "✅") {
        qrTitle.textContent = "Partager ce Token";
@@ -702,71 +701,62 @@
        qrTitle.textContent = "Scanner un Token";
        qrDisplayDiv.style.display = "none";
        qrReaderDiv.style.display = "block";
-
-       // --- ETAPE 1 : FORCER LA DEMANDE DE PERMISSION SAFARI ---
-       var constraints = { video: { facingMode: "environment" } };
        
-       // On utilise la syntaxe universelle pour les droits
-       var promise = null;
-       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-           promise = navigator.mediaDevices.getUserMedia(constraints);
-       } else {
-           var gUM = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-           if (gUM) {
-               promise = new Promise(function(resolve, reject) {
-                   gUM.call(navigator, constraints, resolve, reject);
-               });
-           }
-       }
+       // METHODE DIRECTE SANS WRAPPER
+       // On essaie les 3 syntaxes possibles pour les vieux iOS
+       var n = navigator;
+       var ask = (n.mediaDevices && n.mediaDevices.getUserMedia) 
+                 ? n.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                 : (n.webkitGetUserMedia ? n.webkitGetUserMedia({ video: true }) : null);
 
-       if (promise) {
-           promise.then(function(stream) {
-               // Permission accordée ! On arrête ce flux de test...
+       if (ask && ask.then) {
+           // Version moderne (Promise)
+           ask.then(function(stream) {
+               qrReaderDiv.innerHTML = "Accès autorisé ! Lancement du scanner...";
                stream.getTracks().forEach(function(t) { t.stop(); });
-               // ... et on lance IMMEDIATEMENT le scanner
-               launchScanner();
+               lancerScanner();
            }).catch(function(err) {
-               qrReaderDiv.innerHTML = "<p style='color:red'>Permission refusée ou erreur : " + err.name + "</p>";
+               qrReaderDiv.innerHTML = "Erreur : " + err.name;
+           });
+       } else if (n.webkitGetUserMedia) {
+           // Version très ancienne (Callback)
+           n.webkitGetUserMedia({ video: true }, function(stream) {
+               stream.getTracks()[0].stop();
+               lancerScanner();
+           }, function(err) {
+               qrReaderDiv.innerHTML = "Refusé ou Erreur.";
            });
        } else {
-           qrReaderDiv.innerHTML = "<p style='color:red'>Caméra non supportée sur ce navigateur.</p>";
+           qrReaderDiv.innerHTML = "Votre iPad bloque l'accès caméra sur ce site.";
        }
     }
   });
 
-  function launchScanner() {
-      if(!html5QrcodeScanner) {
-          html5QrcodeScanner = new Html5QrcodeScanner(
-              "qr-reader", 
-              { 
-                  fps: 10, 
-                  qrbox: { width: 250, height: 250 },
-                  videoConstraints: { facingMode: "environment" } 
-              }
-          );
-          html5QrcodeScanner.render(onScanSuccess, onScanError);
-      }
+  function lancerScanner() {
+    if(!html5QrcodeScanner) {
+      html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { 
+          fps: 10, 
+          qrbox: 250,
+          videoConstraints: { facingMode: "environment" }
+      });
+      html5QrcodeScanner.render(onScanSuccess, onScanError);
+    }
   }
 
-  function onScanSuccess(decodedText, decodedResult) {
+  function onScanSuccess(decodedText) {
       tokenInput.value = decodedText;
       localStorage.setItem("tvToken", decodedText);
       checkToken(decodedText);
       closeModal();
   }
 
-  function onScanError(errorMessage) { }
-
+  function onScanError(e) { }
   closeQrBtn.onclick = closeModal;
 
   function closeModal() {
       qrModal.style.display = "none";
       if (html5QrcodeScanner) {
-          html5QrcodeScanner.clear().then(function() {
-              html5QrcodeScanner = null;
-          }).catch(function(error) {
-              html5QrcodeScanner = null;
-          });
+          html5QrcodeScanner.clear().then(function() { html5QrcodeScanner = null; });
       }
   }
 </script>
