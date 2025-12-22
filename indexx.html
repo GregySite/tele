@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Greg TV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABm0lEQVRYR8VWy27CMBCcAn0D8SNoD/wB6v//qB8ReoAe6At9S9S6SlsChIba7mSTXfA6M7ueIDGSUkpRksyv3ySTvS2S9nxL8ltkr8hLhRooOSByIPIrshPZFTmU76pX6BLMtsieSNXDq1d9uD6SPtmR6sgv9AQqBfI86wnUBeR51hOoC8jzrCdQF5DnWU+gXmCeV3pCPHq0+8p6pB896oAnUBfIs0mAr0V5C3zUQF7nWU+gLiDPs55AXUCeZz2BuoA8z3oCdQF5nvUE6gLyvNITOIsCjoE8z3oCdQF5nvUE6gLyPOsJ1AXkedYTqAvI86wnUBfI86wnUBfI86wnUBfI86wnUBfIs0mAr0V5C3zUQF7nWU+gLiDPs55AXUCeZz2BuoA8z3oCdQF5nvUE6gLyvNITOIsCjoE8z3oCdQF5nvUE6gLyPOsJ1AXkedYTqAvI86wnUBfI86wnUBfI86wnUBfIs0mAr0V5C3zUQF7nWU+gLiDPs55AXUCeZz2BuoA8z3oCdQF5nvUE6gLyvNITOIsCjoE8z3oCdQF5mO4pX2l+fAOi7253AAAAAElFTkSuQmCC">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: #0f0f0f; color: white; font-family: 'Segoe UI', Roboto, sans-serif; }
+    #main { display: flex; height: calc(100vh - 50px); }
+    
+    /* Liste des chaînes compacte */
+    #channel-list { flex: 0 0 250px; background-color: #161616; overflow-y: auto; padding: 5px; border-right: 1px solid #333; }
+    .channel { 
+      display: flex; align-items: center; border: 1px solid #222; border-radius: 6px; 
+      padding: 5px 10px; margin-bottom: 4px; cursor: pointer; background: #1e1e1e; 
+      transition: all 0.2s ease; height: 48px;
+    }
+    .channel:hover { background: #2a2a2a; }
+    .channel.active { border-color: #cc0000; background: #251010; box-shadow: inset 0 0 5px rgba(204,0,0,0.2); }
+    .channel img { width: 35px; height: 35px; object-fit: contain; margin-right: 12px; background: #000; border-radius: 3px; }
+    .channel-info { flex: 1; overflow: hidden; }
+    .channel-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .epg { font-size: 10px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    #video-container { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+
+    /* Barre de contrôle */
+    #controls { 
+      height: 50px; background: #111; border-top: 1px solid #333; 
+      display: flex; align-items: center; padding: 0 15px; justify-content: space-between;
+    }
+    .nav-group { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
+    
+    button { 
+      background: #252525; color: white; border: 1px solid #444; padding: 6px 14px; 
+      border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    button:hover { background: #333; border-color: #666; }
+    
+    /* Statut Token stylisé */
+    #status-icon { 
+      font-size: 20px; cursor: pointer; width: 40px; text-align: left; 
+      filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); transition: transform 0.2s;
+    }
+    #status-icon.ok { filter: drop-shadow(0 0 5px #2ecc71); }
+    #status-icon.error { filter: drop-shadow(0 0 5px #e74c3c); }
+    #status-icon:active { transform: scale(0.9); }
+
+    /* Modal QR */
+    #qr-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; }
+    #qr-box { background: white; padding: 20px; border-radius: 12px; width: 300px; text-align: center; color: #333; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; background: #eee; }
+    #close-qr { margin-top: 15px; width: 100%; background: #cc0000; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+
+    @media (max-width: 768px) {
+      #main { flex-direction: column; }
+      #channel-list { flex: 1; width: auto; border-right: none; }
+      #video-container { height: 35vh; flex: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="main">
+  <div id="channel-list"></div>
+  <div id="video-container">
+    <video id="videoPlayer" controls autoplay playsinline></video>
+  </div>
+</div>
+
+<div id="controls">
+  <div id="status-icon" title="Scanner QR Code">⏳</div>
+  <div class="nav-group">
+    <button id="prevBtn">&lt; Prev</button>
+    <button id="fsBtn">Full screen</button>
+    <button id="nextBtn">Next &gt;</button>
+  </div>
+  <div style="width:40px"></div> </div>
+
+<div id="qr-modal">
+  <div id="qr-box">
+    <h3 style="margin-top:0">Scanner Token</h3>
+    <div id="reader"></div>
+    <button id="close-qr">Annuler</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.0/hls.min.js"></script>
+<script>
+  const channels = [
+  { name: "TF1", id: "tf1", url: "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8", logo: "data:image/png;base64,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" },
+  { name: "France 2", id: "france2", url: "https://live1-iix.annatel.tv/smooths_live/france2.isml/france2.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAY..." },
+  { name: "France 3", id: "france3", url: "https://live1-iix.annatel.tv/smooths_live/france3.isml/france3.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Canal+", id: "canalplus", url: "https://live1-iix.annatel.tv/smooths_live/canalplus.isml/canalplus.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "France 5", id: "france5", url: "https://live1-iix.annatel.tv/smooths_live/france5.isml/france5.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "M6", id: "m6", url: "https://live1-iix.annatel.tv/smooths_live/m6.isml/m6.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Arte", id: "arte", url: "https://live1-iix.annatel.tv/smooths_live/arte.isml/arte.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "TMC", id: "tmc", url: "https://live1-iix.annatel.tv/smooths_live/tmc.isml/tmc.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "NT1", id: "nt1", url: "https://live1-iix.annatel.tv/smooths_live/nt1.isml/nt1.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "W9", id: "w9", url: "https://live1-iix.annatel.tv/smooths_live/w9.isml/w9.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Annatel+", id: "annatelplus", url: "https://replay1-il.annatel.tv/annatelplus/video.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Tandem", id: "tandem", url: "https://replay1-il.annatel.tv/tandem/video.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Bfm Tv", id: "bfmtv", url: "https://live1-iix.annatel.tv/smooths_live/bfmtv.isml/bfmtv.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "iTele", id: "itele", url: "https://live1-iix.annatel.tv/smooths_live/itele.isml/itele.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "D17", id: "d17", url: "https://live1-iix.annatel.tv/smooths_live/d17.isml/d17.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "TF1 series films", id: "hd1", url: "https://live1-iix.annatel.tv/smooths_live/hd1.isml/hd1.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "L'Equipe 21", id: "lequipe", url: "https://live1-iix.annatel.tv/smooths_live/lequipe.isml/lequipe.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "6Ter", id: "6ter", url: "https://live1-iix.annatel.tv/smooths_live/6ter.isml/6ter.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "RMC Story", id: "num23", url: "https://live1-iix.annatel.tv/smooths_live/num23.isml/num23.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "i24 News fr", id: "i24newsfr", url: "https://live1-iix.annatel.tv/smooths_live/i24_news_fr.isml/i24_news_fr.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Cherie 25", id: "cherie25", url: "https://live1-iix.annatel.tv/smooths_live/cherie25.isml/cherie25.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "RMC Decouverte", id: "rmc_decouverte", url: "https://live1-iix.annatel.tv/smooths_live/rmc_decouverte.isml/rmc_decouverte.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "BEIN Sport 1", id: "beinsport1", url: "https://live1-iix.annatel.tv/smooths_live/beinsport1.isml/beinsport1.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "BEIN Sport 2", id: "beinsport2", url: "https://live1-iix.annatel.tv/smooths_live/beinsport2.isml/beinsport2.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "BEIN Sport 1 HD", id: "beinsport1hd", url: "https://live1-iix.annatel.tv/smooths_live/beinsport1hd.isml/beinsport1hd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "BEIN Sport 2 HD", id: "beinsport2hd", url: "https://live1-iix.annatel.tv/smooths_live/beinsport2hd.isml/beinsport2hd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "BEIN Sport 3", id: "beinsport3", url: "https://live1-iix.annatel.tv/smooths_live/beinsport3.isml/beinsport3.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "SFR Sport 1", id: "sfrsport1", url: "https://live1-iix.annatel.tv/smooths_live/sfrsport1.isml/sfrsport1.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "SFR Sport 2", id: "sfrsport2", url: "https://live1-iix.annatel.tv/smooths_live/sfrsport2.isml/sfrsport2.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "SFR Sport 3", id: "sfrsport3", url: "https://live1-iix.annatel.tv/smooths_live/sfrsport3.isml/sfrsport3.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Canal Cinema", id: "canalplus_cinema", url: "https://live1-iix.annatel.tv/smooths_live/canalplus_cinema.isml/canalplus_cinema.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Canal Sport", id: "canalplus_sport", url: "https://live1-iix.annatel.tv/smooths_live/canalplus_sport.isml/canalplus_sport.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Cine+ Premier", id: "cineplus_premier", url: "https://live1-iix.annatel.tv/smooths_live/cineplus_premier.isml/cineplus_premier.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Cine+ Frisson", id: "cineplus_frisson", url: "https://live1-iix.annatel.tv/smooths_live/cineplus_frisson.isml/cineplus_frisson.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Cine+ Famiz", id: "cineplus_famiz", url: "https://live1-iix.annatel.tv/smooths_live/cineplus_famiz.isml/cineplus_famiz.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "M6 Inter", id: "m6_inter", url: "https://live1-iix.annatel.tv/smooths_live/m6_inter.isml/m6_inter.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "RTL9", id: "rtl9", url: "https://live1-iix.annatel.tv/smooths_live/rtl9.isml/rtl9.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Comedie", id: "comedie", url: "https://live1-iix.annatel.tv/smooths_live/comedie.isml/comedie.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Euro News", id: "euronews", url: "https://live1-iix.annatel.tv/smooths_live/euronews.isml/euronews.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Equidia", id: "equidia", url: "https://live1-iix.annatel.tv/smooths_live/equidia.isml/equidia.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "TF1 HD", id: "tf1hd", url: "https://live1-iix.annatel.tv/smooths_live/tf1hd.isml/tf1hd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "France 2 HD", id: "france2hd", url: "https://live1-iix.annatel.tv/smooths_live/france2hd.isml/france2hd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Canal+ HD", id: "canalplushd", url: "https://live1-iix.annatel.tv/smooths_live/canalplushd.isml/canalplushd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "M6 HD", id: "m6hd", url: "https://live1-iix.annatel.tv/smooths_live/m6hd.isml/m6hd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Canal Sport HD", id: "canalsporthd", url: "https://live1-iix.annatel.tv/smooths_live/canalplus_sport_hd.isml/canalplus_sport_hd.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Info Sport", id: "infosport", url: "https://live1-iix.annatel.tv/smooths_live/infosport.isml/infosport.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Gulli", id: "gulli", url: "https://live1-iix.annatel.tv/smooths_live/gulli.isml/gulli.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Nickelodeon Junior", id: "nickelodeon_junior", url: "https://live1-iix.annatel.tv/smooths_live/nickelodeon_junior.isml/nickelodeon_junior.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Planete", id: "planete", url: "https://live1-iix.annatel.tv/smooths_live/planete.isml/planete.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "A Tv Cpp", id: "atvcpp", url: "https://live1-iix.annatel.tv/smooths_live/atvcpp.isml/atvcpp.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Eurosport 1", id: "eurosport1", url: "https://live1-iix.annatel.tv/smooths_live/eurosport1.isml/eurosport1.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "Eurosport 2", id: "eurosport2", url: "https://live1-iix.annatel.tv/smooths_live/eurosport2.isml/eurosport2.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "ISRAEL TORAH", id: "israel_torah", url: "https://live1-iix.annatel.tv/smooths_live/israel_torah.isml/israel_torah.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." },
+  { name: "i24 News IL", id: "i24newsil", url: "https://live1-iix.annatel.tv/smooths_live/i24_news_he.isml/i24_news_he.m3u8", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAY..." }
+];
+
+  let currentIdx = 0;
+  let html5QrCode = null;
+  const video = document.getElementById('videoPlayer');
+  const listContainer = document.getElementById('channel-list');
+  const statusIcon = document.getElementById('status-icon');
+
+  // Au démarrage
+  window.onload = () => {
+    initList();
+    const t = localStorage.getItem("tvToken");
+    if (t) {
+      updateStatus('ok');
+      loadChan(0);
+    } else {
+      updateStatus('error');
+    }
+  };
+
+  function initList() {
+    listContainer.innerHTML = '';
+    channels.forEach((ch, i) => {
+      const div = document.createElement('div');
+      div.className = 'channel';
+      div.id = `ch-${i}`;
+      div.innerHTML = `
+        <img src="${ch.logo}" onerror="this.src='https://via.placeholder.com/40x40?text=TV'">
+        <div class="channel-info">
+          <div class="channel-name">${ch.name}</div>
+          <div class="epg">Direct</div>
+        </div>
+      `;
+      div.onclick = () => loadChan(i);
+      listContainer.appendChild(div);
+    });
+  }
+
+  function loadChan(index) {
+    if (index < 0 || index >= channels.length) return;
+    currentIdx = index;
+    const ch = channels[index];
+    const token = localStorage.getItem("tvToken") || "";
+    
+    // Visuel liste
+    document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
+    const activeEl = document.getElementById(`ch-${index}`);
+    if (activeEl) {
+      activeEl.classList.add('active');
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    const stream = `${ch.url}?token=${token}`;
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(stream);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, () => updateStatus('error'));
+      hls.on(Hls.Events.MANIFEST_PARSED, () => updateStatus('ok'));
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = stream;
+    }
+  }
+
+  function updateStatus(state) {
+    statusIcon.className = '';
+    if (state === 'ok') { statusIcon.textContent = '✅'; statusIcon.classList.add('ok'); }
+    else if (state === 'error') { statusIcon.textContent = '❌'; statusIcon.classList.add('error'); }
+    else { statusIcon.textContent = '⏳'; }
+  }
+
+  // Navigation
+  document.getElementById('prevBtn').onclick = () => loadChan(currentIdx - 1);
+  document.getElementById('nextBtn').onclick = () => loadChan(currentIdx + 1);
+  document.getElementById('fsBtn').onclick = () => {
+    if (video.requestFullscreen) video.requestFullscreen();
+    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+  };
+
+  // Swipe
+  let startX = 0;
+  video.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+  video.addEventListener('touchend', e => {
+    let diff = startX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 80) loadChan(diff > 0 ? currentIdx + 1 : currentIdx - 1);
+  });
+
+  // QR Scan
+  statusIcon.onclick = () => {
+    document.getElementById('qr-modal').style.display = 'flex';
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, (text) => {
+      localStorage.setItem("tvToken", text);
+      stopScan();
+      loadChan(currentIdx);
+    }).catch(() => {});
+  };
+
+  function stopScan() {
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => {
+        document.getElementById('qr-modal').style.display = 'none';
+        html5QrCode = null;
+      });
+    } else {
+      document.getElementById('qr-modal').style.display = 'none';
+    }
+  }
+  document.getElementById('close-qr').onclick = stopScan;
+</script>
+
+</body>
+</html>
