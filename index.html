@@ -764,23 +764,28 @@
   document.getElementById("close-qr").onclick = closeModal;
 
 function closeModal() {
-    // On utilise directement l'élément du DOM
-    document.getElementById("qr-modal").style.display = "none";
+    const modalElement = document.getElementById("qr-modal");
+    modalElement.style.display = "none";
     
     if (typeof html5QrCode !== 'undefined' && html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(err){ console.log(err); });
+        html5QrCode.stop().catch(function(err){ console.error(err); });
     }
-    document.getElementById("qr-input-file").value = "";
+    const fileInput = document.getElementById("qr-input-file");
+    if(fileInput) fileInput.value = "";
   }
 
-  // Écouteur de clic sur toute la fenêtre
-  window.addEventListener('click', function(event) {
-    var modal = document.getElementById("qr-modal");
-    // Si l'élément cliqué est exactement le fond noir (id="qr-modal")
-    if (event.target === modal) {
+  // Écouteur universel (Souris + Tactile)
+  const modalBackground = document.getElementById("qr-modal");
+
+  function handleOutsideClick(event) {
+    // Si on touche/clique l'élément qui a l'ID "qr-modal" (le fond sombre)
+    if (event.target.id === "qr-modal") {
       closeModal();
     }
-  });
+  }
+
+  modalBackground.addEventListener('mousedown', handleOutsideClick);
+  modalBackground.addEventListener('touchstart', handleOutsideClick);
 </script>
 </body>
 </html>
