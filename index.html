@@ -708,7 +708,7 @@
 
       if (status === "✅") {
          <!--- qrTitle.textContent = "Votre Token"; --->
-         qrDisplayDiv.style.display = "block";
+         <!--- qrDisplayDiv.style.display = "block"; --->
          qrDisplayDiv.innerHTML = "";
          new QRCode(qrDisplayDiv, { text: tokenInput.value, width: 200, height: 200 });
       } else {
