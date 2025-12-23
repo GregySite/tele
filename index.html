@@ -764,28 +764,32 @@
   document.getElementById("close-qr").onclick = closeModal;
 
 function closeModal() {
-    const modalElement = document.getElementById("qr-modal");
-    modalElement.style.display = "none";
+    // Accès direct au DOM pour éviter tout conflit de variable
+    const modal = document.getElementById("qr-modal");
+    if (modal) modal.style.display = "none";
     
     if (typeof html5QrCode !== 'undefined' && html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(err){ console.error(err); });
+        html5QrCode.stop().catch(function(err){ console.log(err); });
     }
+    
     const fileInput = document.getElementById("qr-input-file");
-    if(fileInput) fileInput.value = "";
+    if (fileInput) fileInput.value = "";
   }
 
-  // Écouteur universel (Souris + Tactile)
-  const modalBackground = document.getElementById("qr-modal");
-
-  function handleOutsideClick(event) {
-    // Si on touche/clique l'élément qui a l'ID "qr-modal" (le fond sombre)
-    if (event.target.id === "qr-modal") {
-      closeModal();
+  // GESTION DU CLIC À L'EXTÉRIEUR
+  document.addEventListener('mousedown', function(event) {
+    const modal = document.getElementById("qr-modal");
+    const content = document.getElementById("qr-content");
+    
+    // Si la popup est affichée
+    if (modal && modal.style.display === "flex") {
+      // Si l'élément cliqué n'est PAS dans la boîte blanche (qr-content)
+      // et que l'élément cliqué n'est PAS un bouton qui ouvre la modal
+      if (!content.contains(event.target)) {
+        closeModal();
+      }
     }
-  }
-
-  modalBackground.addEventListener('mousedown', handleOutsideClick);
-  modalBackground.addEventListener('touchstart', handleOutsideClick);
+  }, true); // Le "true" ici est vital : il force l'écouteur à passer avant tout le reste
 </script>
 </body>
 </html>
