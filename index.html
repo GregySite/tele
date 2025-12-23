@@ -764,20 +764,23 @@
   document.getElementById("close-qr").onclick = closeModal;
 
 function closeModal() {
+    // On utilise la variable qrModal déjà définie en haut de ton fichier
     qrModal.style.display = "none";
+    
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(){});
+        html5QrCode.stop().catch(function(err){ console.log(err); });
     }
+    // On vide l'input pour permettre de scanner le même fichier plusieurs fois
     qrFileInput.value = "";
-  
-// Fermer la popup si on clique sur l'arrière-plan (l'élément qr-modal lui-même)
-window.onclick = function(event) {
-  var modal = document.getElementById("qr-modal");
-  if (event.target == modal) {
-    closeModal();
   }
-}
-};
+
+  // Détecter le clic sur l'arrière-plan (l'overlay noir)
+  window.addEventListener('click', function(event) {
+    if (event.target == qrModal) {
+      closeModal();
+    }
+  });
+
 </script>
 </body>
 </html>
