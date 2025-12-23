@@ -764,23 +764,23 @@
   document.getElementById("close-qr").onclick = closeModal;
 
 function closeModal() {
-    console.log("Fermeture de la popup demandée");
-    qrModal.style.display = "none";
-    if (html5QrCode && html5QrCode.isScanning) {
+    // On utilise directement l'élément du DOM
+    document.getElementById("qr-modal").style.display = "none";
+    
+    if (typeof html5QrCode !== 'undefined' && html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().catch(function(err){ console.log(err); });
     }
-    qrFileInput.value = "";
+    document.getElementById("qr-input-file").value = "";
   }
 
-  // CETTE FOIS ON ATTACHE L'ÉVÉNEMENT DIRECTEMENT SUR L'ID "qr-modal"
-  document.getElementById("qr-modal").addEventListener('click', function(event) {
-    // L'ID du contenu blanc à l'intérieur de ta modal est "qr-content" (d'après ton fichier)
-    // On vérifie si l'élément cliqué est le fond et non le contenu
-    if (event.target.id === "qr-modal") {
+  // Écouteur de clic sur toute la fenêtre
+  window.addEventListener('click', function(event) {
+    var modal = document.getElementById("qr-modal");
+    // Si l'élément cliqué est exactement le fond noir (id="qr-modal")
+    if (event.target === modal) {
       closeModal();
     }
   });
-  // ------------------------------------------------
 </script>
 </body>
 </html>
