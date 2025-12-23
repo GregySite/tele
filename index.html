@@ -764,23 +764,26 @@
   document.getElementById("close-qr").onclick = closeModal;
 
 function closeModal() {
-    // On utilise la variable qrModal déjà définie en haut de ton fichier
+    // On cache la modal
     qrModal.style.display = "none";
     
+    // On arrête la caméra proprement
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(err){ console.log(err); });
+        html5QrCode.stop().catch(function(err){ console.log("Erreur arrêt caméra:", err); });
     }
-    // On vide l'input pour permettre de scanner le même fichier plusieurs fois
+    // On réinitialise l'input fichier
     qrFileInput.value = "";
   }
 
-  // Détecter le clic sur l'arrière-plan (l'overlay noir)
-  window.addEventListener('click', function(event) {
-    if (event.target == qrModal) {
+  // --- CE BLOC CI-DESSOUS GÈRE LE CLIC EXTÉRIEUR ---
+  qrModal.addEventListener('click', function(event) {
+    // Si l'utilisateur clique sur le fond gris (qr-modal) 
+    // et PAS sur la boîte blanche au milieu (qr-content)
+    if (event.target === qrModal) {
       closeModal();
     }
   });
-
+  // ------------------------------------------------
 </script>
 </body>
 </html>
