@@ -730,7 +730,7 @@
     
     html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
     .then(function() { 
-        qrTitle.textContent = "Visez le QR Code"; 
+        <!--- qrTitle.textContent = "Visez le QR Code"; --->
     })
     .catch(function(err) {
         // Fallback photo pour les smartphones récents dont la caméra bug
