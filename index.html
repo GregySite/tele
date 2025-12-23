@@ -769,14 +769,14 @@ function closeModal() {
         html5QrCode.stop().catch(function(){});
     }
     qrFileInput.value = "";
-  }
-
+  
 // Fermer la popup si on clique sur l'arrière-plan (l'élément qr-modal lui-même)
 window.onclick = function(event) {
   var modal = document.getElementById("qr-modal");
   if (event.target == modal) {
     closeModal();
   }
+}
 };
 </script>
 </body>
