@@ -763,20 +763,21 @@
 
   document.getElementById("close-qr").onclick = closeModal;
 
-  function closeModal() {
-    var modal = document.getElementById("qr-modal");
-    modal.style.display = "none";
+function closeModal() {
+    qrModal.style.display = "none";
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(err){ console.log(err); });
+        html5QrCode.stop().catch(function(){});
     }
-    // On vide l'input file pour pouvoir scanner le même fichier deux fois de suite si besoin
-    document.getElementById("qr-input-file").value = "";
+    qrFileInput.value = "";
   }
 
-  // Fermer la popup si on clique sur l'arrière-plan (autour de la fenêtre blanche)
-  window.onclick = function(event) {
-    var modal = document.getElementById("qr-modal");
-    if (event.target == modal) {
-      closeModal();
-    }
-  };
+// Fermer la popup si on clique sur l'arrière-plan (l'élément qr-modal lui-même)
+window.onclick = function(event) {
+  var modal = document.getElementById("qr-modal");
+  if (event.target == modal) {
+    closeModal();
+  }
+};
+</script>
+</body>
+</html>
