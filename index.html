@@ -447,7 +447,7 @@
       <input type="file" id="qr-input-file" accept="image/*" capture="environment" style="display: none;">
     </div>
     
-    <button id="close-qr" style="margin-top:10px;">Annuler</button>
+    <!---<button id="close-qr" style="margin-top:10px;">Annuler</button>--->
   </div>
 </div>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -764,13 +764,19 @@
   document.getElementById("close-qr").onclick = closeModal;
 
   function closeModal() {
-    qrModal.style.display = "none";
+    var modal = document.getElementById("qr-modal");
+    modal.style.display = "none";
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(){});
+        html5QrCode.stop().catch(function(err){ console.log(err); });
     }
-    qrFileInput.value = "";
+    // On vide l'input file pour pouvoir scanner le même fichier deux fois de suite si besoin
+    document.getElementById("qr-input-file").value = "";
   }
-	
-</script>
-</body>
-</html>
+
+  // Fermer la popup si on clique sur l'arrière-plan (autour de la fenêtre blanche)
+  window.onclick = function(event) {
+    var modal = document.getElementById("qr-modal");
+    if (event.target == modal) {
+      closeModal();
+    }
+  };
