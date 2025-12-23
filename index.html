@@ -764,22 +764,19 @@
   document.getElementById("close-qr").onclick = closeModal;
 
 function closeModal() {
-    // On cache la modal
+    console.log("Fermeture de la popup demandée");
     qrModal.style.display = "none";
-    
-    // On arrête la caméra proprement
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(function(err){ console.log("Erreur arrêt caméra:", err); });
+        html5QrCode.stop().catch(function(err){ console.log(err); });
     }
-    // On réinitialise l'input fichier
     qrFileInput.value = "";
   }
 
-  // --- CE BLOC CI-DESSOUS GÈRE LE CLIC EXTÉRIEUR ---
-  qrModal.addEventListener('click', function(event) {
-    // Si l'utilisateur clique sur le fond gris (qr-modal) 
-    // et PAS sur la boîte blanche au milieu (qr-content)
-    if (event.target === qrModal) {
+  // CETTE FOIS ON ATTACHE L'ÉVÉNEMENT DIRECTEMENT SUR L'ID "qr-modal"
+  document.getElementById("qr-modal").addEventListener('click', function(event) {
+    // L'ID du contenu blanc à l'intérieur de ta modal est "qr-content" (d'après ton fichier)
+    // On vérifie si l'élément cliqué est le fond et non le contenu
+    if (event.target.id === "qr-modal") {
       closeModal();
     }
   });
