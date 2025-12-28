@@ -27,10 +27,15 @@ jobs:
           ANNATEL_PASS: ${{ secrets.ANNATEL_PASS }}
         run: python annatel_token.py
 
-      - name: Commit and Push if token changed
+    - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add token.json
-          git commit -m "Auto-update token" || exit 0
-          git push
+          # On vérifie si le fichier existe avant de faire quoi que ce soit
+          if [ -f token.json ]; then
+            git add token.json
+            git commit -m "Auto-update token" || exit 0
+            git push
+          else
+            echo "Le fichier token.json n'a pas été généré, rien à commit."
+          fi
