@@ -1,0 +1,36 @@
+name: Update Annatel Token
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Se lance tous les jours à minuit
+  workflow_dispatch: # Permet de le lancer manuellement pour tester
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install selenium webdriver-manager
+
+      - name: Run Script
+        env:
+          ANNATEL_USER: ${{ secrets.ANNATEL_USER }}
+          ANNATEL_PASS: ${{ secrets.ANNATEL_PASS }}
+        run: python annatel_token.py
+
+      - name: Commit and Push if token changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add token.json
+          git commit -m "Auto-update token" || exit 0
+          git push
