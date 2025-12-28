@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -16,6 +17,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
 
       - name: Install Dependencies
         run: |
@@ -27,15 +33,18 @@ jobs:
           ANNATEL_PASS: ${{ secrets.ANNATEL_PASS }}
         run: python annatel_token.py
 
-    - name: Commit and Push
+      - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          # On vérifie si le fichier existe avant de faire quoi que ce soit
+          
+          # On vérifie si le fichier token.json a bien été créé par le script python
           if [ -f token.json ]; then
             git add token.json
+            # Le "|| exit 0" évite que l'action plante s'il n'y a aucun changement
             git commit -m "Auto-update token" || exit 0
             git push
           else
-            echo "Le fichier token.json n'a pas été généré, rien à commit."
+            echo "ERREUR : Le fichier token.json n'a pas été trouvé. Le script a dû échouer."
+            exit 1
           fi
