@@ -461,6 +461,34 @@
   var prevBtn = document.getElementById("prev-btn");
   var currentChannel = null;
   var hls = null;
+	
+	/* --- AUTO-UPDATE DU TOKEN DEPUIS GITHUB ACTIONS --- */
+  window.addEventListener('load', function() {
+    // On ne récupère le token auto que si l'input est vide ou contient un token invalide
+    var currentVal = tokenInput.value.trim();
+    
+    // On appelle le fichier généré par l'Action GitHub
+    // Le ?t= force le navigateur à ne pas utiliser une version périmée (cache)
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "token.json?t=" + Date.now(), true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data.token && data.token !== currentVal) {
+            console.log("Nouveau token auto-récupéré : " + data.token);
+            tokenInput.value = data.token;
+            localStorage.setItem("tvToken", data.token);
+            // On lance ta fonction de vérification déjà existante
+            if (typeof checkToken === "function") {
+              checkToken(data.token);
+            }
+          }
+        } catch (e) { console.log("Pas de token auto disponible"); }
+      }
+    };
+    xhr.send();
+  });
 
   /* --- 1. GESTION DU TOKEN --- */
   
