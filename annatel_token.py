@@ -9,93 +9,75 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- RÉCUPÉRATION DES SECRETS GITHUB ---
 USER_VAL = os.getenv("ANNATEL_USER")
 PASS_VAL = os.getenv("ANNATEL_PASS")
 
 def get_token():
-    print("Démarrage de la récupération du token...")
+    print("Démarrage - Mode Ultra-Léger")
     
-    # --- CONFIGURATION CHROME POUR SERVEUR (GITHUB ACTIONS) ---
     options = Options()
-    options.add_argument("--headless=new") # Mode sans fenêtre (obligatoire)
-    options.add_argument("--no-sandbox")   # Nécessaire pour les droits root Linux
-    options.add_argument("--disable-dev-shm-usage") # Utilise la RAM système au lieu de /dev/shm
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--remote-allow-origins=*")
+    # On bloque les images pour aller plus vite et éviter les timeouts
+    options.add_argument("--blink-settings=imagesEnabled=false")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
+    # STRATÉGIE ANTI-TIMEOUT : On n'attend pas le chargement complet (eager)
+    options.page_load_strategy = 'eager'
     options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
     
-    # Installation du driver Chrome
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
     
-    # Timeout global pour éviter les blocages infinis
-    driver.set_page_load_timeout(60)
     token_final = None
 
     try:
-        # 1. Connexion
-        print("Navigation vers la page de login...")
+        print("Accès à la page login...")
         driver.get("https://client.annatel.tv/auth/login")
-        wait = WebDriverWait(driver, 20)
         
-        print("Remplissage des identifiants...")
-        wait.until(EC.presence_of_element_located((By.XPATH, "//input[@name='login']"))).send_keys(USER_VAL)
-        driver.find_element(By.XPATH, "//input[@name='password']").send_keys(PASS_VAL)
+        # On attend manuellement l'élément, c'est plus sûr que le load global
+        wait = WebDriverWait(driver, 30)
         
-        print("Clic sur le bouton submit...")
+        print("Saisie des identifiants...")
+        user_field = wait.until(EC.presence_of_element_located((By.NAME, "login")))
+        user_field.send_keys(USER_VAL)
+        driver.find_element(By.NAME, "password").send_keys(PASS_VAL)
+        
+        print("Clic connexion...")
         driver.find_element(By.XPATH, "//input[@type='submit']").click()
         
-        # Pause pour laisser la session se créer
         time.sleep(5)
         
-        # 2. Accès à la chaîne pour générer le flux réseau
-        print("Navigation vers la page W9...")
+        print("Navigation vers W9...")
         driver.get("https://client.annatel.tv/channel/w9")
 
-        # 3. Analyse des logs de performance (Réseau)
-        print("Analyse du réseau pour trouver le token...")
+        print("Recherche du token...")
         start_time = time.time()
-        # On cherche pendant 40 secondes max
         while (time.time() - start_time) < 40:
             logs = driver.get_log("performance")
             for entry in logs:
-                message = json.loads(entry["message"])["message"]
-                
-                # On filtre les requêtes réseau sortantes
-                if message["method"] == "Network.requestWillBeSent":
-                    url_requete = message["params"]["request"]["url"]
-                    
-                    if "token=" in url_requete:
-                        print(f"URL avec token détectée : {url_requete}")
-                        # On isole le token
-                        token_extrais = url_requete.split("token=")[-1]
-                        token_final = token_extrais.split("&")[0]
+                msg = json.loads(entry["message"])["message"]
+                if msg["method"] == "Network.requestWillBeSent":
+                    url = msg["params"]["request"]["url"]
+                    if "token=" in url:
+                        token_final = url.split("token=")[-1].split("&")[0]
                         break
-            
-            if token_final:
-                break
-            time.sleep(2) # On vérifie toutes les 2 secondes
+            if token_final: break
+            time.sleep(2)
 
-        # 4. Sauvegarde du résultat
         if token_final:
-            data = {
-                "token": token_final, 
-                "last_update": time.strftime("%d/%m/%Y %H:%M:%S")
-            }
-            # On écrit le fichier à la racine
+            data = {"token": token_final, "last_update": time.strftime("%d/%m/%Y %H:%M:%S")}
             with open("token.json", "w") as f:
                 json.dump(data, f)
-            print(f"SUCCÈS : Token {token_final} enregistré dans token.json")
+            print(f"OK: Token trouvé")
         else:
-            print("ERREUR : Token non trouvé dans les requêtes réseau.")
+            print("ERREUR: Token non trouvé dans le flux")
 
     except Exception as e:
-        print(f"UNE ERREUR EST SURVENUE : {str(e)}")
-        
+        print(f"CRASH : {str(e)}")
     finally:
-        print("Fermeture du navigateur.")
         driver.quit()
 
 if __name__ == "__main__":
