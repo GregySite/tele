@@ -2,41 +2,42 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Greg TV 📺 — iPad</title>
+  <title>Greg TV iPad</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
 
-    /* =====================================================
-       RESET & BASE  — compatible Safari 5 / iOS 6+
-    ===================================================== */
     * { -webkit-box-sizing: border-box; box-sizing: border-box; margin: 0; padding: 0; }
 
-    html, body {
+    /* position:fixed + overflow:hidden sur html ET body = la page ne scroll JAMAIS */
+    html {
+      position: fixed;
+      width: 100%;
       height: 100%;
+      overflow: hidden;
+    }
+    body {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: #0f0f0f;
       color: #f0f0f0;
       font-family: Helvetica, Arial, sans-serif;
       font-size: 15px;
-      overflow: hidden;
-      position: fixed;   /* bloque le scroll de page sur iOS */
-      width: 100%;
     }
 
-    /* =====================================================
-       HEADER TOKEN
-    ===================================================== */
+    /* ---- HEADER ---- */
     #header {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 44px;
       background: #1a1a1a;
       border-bottom: 1px solid #333;
-      padding: 7px 10px;
-      display: -webkit-box;
-      display: table;      /* fallback tableau pour vieux Safari */
-      width: 100%;
-    }
-    #header-inner {
+      padding: 6px 10px;
       display: table;
       width: 100%;
     }
+    #header-inner { display: table; width: 100%; }
     #header-label {
       display: table-cell;
       white-space: nowrap;
@@ -67,41 +68,45 @@
     #version-tag {
       display: table-cell;
       vertical-align: middle;
-      padding-left: 8px;
+      padding-left: 6px;
       font-size: 10px;
       color: #555;
       white-space: nowrap;
     }
 
-    /* =====================================================
-       LAYOUT PRINCIPAL — table à 2 colonnes
-       (flexbox évité car bugué sur Safari iOS 5-6)
-    ===================================================== */
-    #layout {
+    /* ---- ZONE PRINCIPALE (sous le header) ---- */
+    #main {
+      position: absolute;
+      top: 44px; left: 0; right: 0; bottom: 0;
       display: table;
       width: 100%;
-      height: calc(100% - 42px);
       table-layout: fixed;
-      position: absolute;
-      top: 42px;
-      left: 0;
-      right: 0;
-      bottom: 0;
     }
 
-    /* =====================================================
-       COLONNE GAUCHE : liste des chaînes
-    ===================================================== */
-    #channel-col {
+    /* ---- COLONNE GAUCHE : chaînes ---- */
+    /* La table-cell ne peut PAS scroller directement.
+       On met donc juste la structure, et le scroll
+       est sur #channel-scroll à l'intérieur. */
+    #channel-td {
       display: table-cell;
-      width: 220px;
+      width: 210px;
       vertical-align: top;
       background: #161616;
       border-right: 1px solid #2a2a2a;
-      overflow-y: scroll;                  /* scroll forcé (pas auto) */
-      -webkit-overflow-scrolling: touch;   /* scroll inertiel iOS */
+      /* PAS d'overflow ici — ça ne fonctionne pas sur table-cell */
+    }
+
+    /* Ce div INTÉRIEUR fait le vrai scroll */
+    #channel-scroll {
+      position: absolute;
+      top: 44px;
+      left: 0;
+      width: 210px;
+      bottom: 0;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
       padding: 6px;
-      height: 100%;
+      background: #161616;
     }
 
     .channel {
@@ -111,7 +116,6 @@
       border: 1px solid #333;
       border-radius: 5px;
       cursor: pointer;
-      /* pas de transition — trop lent sur A5 */
     }
     .channel.active {
       border-color: #e00;
@@ -119,38 +123,31 @@
       color: #ff4444;
       font-weight: bold;
     }
-    .channel-name {
-      font-size: 14px;
-      line-height: 1.3;
-    }
+    .channel-name { font-size: 14px; line-height: 1.3; }
 
-    /* =====================================================
-       COLONNE DROITE : lecteur vidéo
-    ===================================================== */
-    #video-col {
+    /* ---- COLONNE DROITE : vidéo ---- */
+    #video-td {
       display: table-cell;
       vertical-align: top;
       background: #0f0f0f;
+    }
+    #video-col {
+      position: absolute;
+      top: 44px;
+      left: 210px;
+      right: 0;
+      bottom: 0;
       padding: 12px;
+      overflow: hidden;
     }
 
-    #video-wrapper {
-      position: relative;
-      width: 100%;
-      background: #000;
-    }
-
-    /* Le tag <video> — taille automatique, jamais plus haut que la fenêtre */
-    #video {
+    video {
       display: block;
       width: 100%;
       max-height: 55vh;
       background: #000;
     }
 
-    /* =====================================================
-       BOUTONS DE CONTRÔLE
-    ===================================================== */
     #controls {
       margin-top: 10px;
       text-align: center;
@@ -158,7 +155,7 @@
     .ctrl-btn {
       display: inline-block;
       margin: 4px 5px;
-      padding: 10px 18px;
+      padding: 10px 16px;
       font-size: 14px;
       background: #2a2a2a;
       color: #ddd;
@@ -166,187 +163,111 @@
       border-radius: 5px;
       cursor: pointer;
       -webkit-appearance: none;
-      text-decoration: none;
     }
-    .ctrl-btn:active {
-      background: #444;
-    }
+    .ctrl-btn:active { background: #444; }
 
-    /* =====================================================
-       MESSAGE D'INFO / ERREUR
-    ===================================================== */
+    #loading { margin-top: 10px; font-size: 13px; color: #888; display: none; }
+    #loading.visible { display: block; }
     #info-msg {
-      margin-top: 12px;
-      padding: 10px 14px;
-      background: #1e1e1e;
-      border-left: 3px solid #e00;
-      font-size: 13px;
-      color: #ccc;
-      border-radius: 3px;
-      display: none;
+      margin-top: 12px; padding: 10px 14px;
+      background: #1e1e1e; border-left: 3px solid #e00;
+      font-size: 13px; color: #ccc; border-radius: 3px; display: none;
     }
     #info-msg.visible { display: block; }
-
-    /* =====================================================
-       INDICATEUR "CHARGEMENT"
-    ===================================================== */
-    #loading {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #888;
-      display: none;
-    }
-    #loading.visible { display: block; }
-
-    /* =====================================================
-       MODE PORTRAIT (tablette tenue à la verticale)
-       On empile les colonnes
-    ===================================================== */
-    @media (max-width: 600px) {
-      #layout { display: block; height: auto; }
-      #channel-col {
-        display: block;
-        width: 100%;
-        height: 180px;   /* liste défilante compacte */
-        border-right: none;
-        border-bottom: 1px solid #2a2a2a;
-      }
-      #video-col { display: block; width: 100%; }
-      #video { max-height: 35vh; }
-    }
 
   </style>
 </head>
 <body>
 
-<!-- ========== HEADER ========== -->
+<!-- HEADER TOKEN -->
 <div id="header">
   <div id="header-inner">
     <span id="header-label">Greg TV 📺</span>
-    <input
-      type="text"
-      id="tokenInput"
-      placeholder="Token…"
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      spellcheck="false"
-    >
+    <input type="text" id="tokenInput" placeholder="Token…"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <span id="tokenStatus">⏳</span>
-    <span id="version-tag">iPad v1.0</span>
+    <span id="version-tag">iPad v1.2</span>
   </div>
 </div>
 
-<!-- ========== LAYOUT PRINCIPAL ========== -->
-<div id="layout">
+<!-- LISTE DES CHAÎNES (div absolu, scroll indépendant) -->
+<div id="channel-scroll">
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8"><span class="channel-name">TF1</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france2.isml/france2.m3u8"><span class="channel-name">France 2</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france3.isml/france3.m3u8"><span class="channel-name">France 3</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalplus.isml/canalplus.m3u8"><span class="channel-name">Canal+</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france5.isml/france5.m3u8"><span class="channel-name">France 5</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/m6.isml/m6.m3u8"><span class="channel-name">M6</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/arte.isml/arte.m3u8"><span class="channel-name">Arte</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tmc.isml/tmc.m3u8"><span class="channel-name">TMC</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/nt1.isml/nt1.m3u8"><span class="channel-name">NT1</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/w9.isml/w9.m3u8"><span class="channel-name">W9</span></div>
+  <div class="channel" data-url="https://replay1-il.annatel.tv/annatelplus/video.m3u8"><span class="channel-name">Annatel+</span></div>
+  <div class="channel" data-url="https://replay1-il.annatel.tv/tandem/video.m3u8"><span class="channel-name">Tandem</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/bfmtv.isml/bfmtv.m3u8"><span class="channel-name">BFM TV</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/itele.isml/itele.m3u8"><span class="channel-name">iTele</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/d17.isml/d17.m3u8"><span class="channel-name">D17</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tf1seriesfilms.isml/tf1seriesfilms.m3u8"><span class="channel-name">TF1 Séries Films</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/lequipe21.isml/lequipe21.m3u8"><span class="channel-name">L'Équipe 21</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/6ter.isml/6ter.m3u8"><span class="channel-name">6Ter</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/rmcstory.isml/rmcstory.m3u8"><span class="channel-name">RMC Story</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/i24newsfr.isml/i24newsfr.m3u8"><span class="channel-name">i24 News FR</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cherie25.isml/cherie25.m3u8"><span class="channel-name">Chérie 25</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/rmcdecouverte.isml/rmcdecouverte.m3u8"><span class="channel-name">RMC Découverte</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/beinsport1.isml/beinsport1.m3u8"><span class="channel-name">BEIN Sport 1</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/beinsport2.isml/beinsport2.m3u8"><span class="channel-name">BEIN Sport 2</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/beinsport3.isml/beinsport3.m3u8"><span class="channel-name">BEIN Sport 3</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/sfrsport1.isml/sfrsport1.m3u8"><span class="channel-name">SFR Sport 1</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/sfrsport2.isml/sfrsport2.m3u8"><span class="channel-name">SFR Sport 2</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/sfrsport3.isml/sfrsport3.m3u8"><span class="channel-name">SFR Sport 3</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalcinema.isml/canalcinema.m3u8"><span class="channel-name">Canal Cinéma</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalsport.isml/canalsport.m3u8"><span class="channel-name">Canal Sport</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cinepluspremier.isml/cinepluspremier.m3u8"><span class="channel-name">Ciné+ Premier</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cineplusfrisson.isml/cineplusfrisson.m3u8"><span class="channel-name">Ciné+ Frisson</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cineplusfamiz.isml/cineplusfamiz.m3u8"><span class="channel-name">Ciné+ Famiz</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/m6inter.isml/m6inter.m3u8"><span class="channel-name">M6 Inter</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/rtl9.isml/rtl9.m3u8"><span class="channel-name">RTL9</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/tvlive/comedie/index.m3u8"><span class="channel-name">Comédie</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/euronews.isml/euronews.m3u8"><span class="channel-name">Euro News</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/equidia.isml/equidia.m3u8"><span class="channel-name">Equidia</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tf1hd.isml/tf1hd.m3u8"><span class="channel-name">TF1 HD</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france2hd.isml/france2hd.m3u8"><span class="channel-name">France 2 HD</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalplushd.isml/canalplushd.m3u8"><span class="channel-name">Canal+ HD</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/m6hd.isml/m6hd.m3u8"><span class="channel-name">M6 HD</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalsporthd.isml/canalsporthd.m3u8"><span class="channel-name">Canal Sport HD</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/infosport.isml/infosport.m3u8"><span class="channel-name">Info Sport</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/gulli.isml/gulli.m3u8"><span class="channel-name">Gulli</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/nickjr.isml/nickjr.m3u8"><span class="channel-name">Nickelodeon Jr</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/planete.isml/planete.m3u8"><span class="channel-name">Planète</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/atvcpp.isml/atvcpp.m3u8"><span class="channel-name">A Tv Cpp</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/eurosport.isml/eurosport.m3u8"><span class="channel-name">Eurosport 1</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/tvlive/eurosport2/index.m3u8"><span class="channel-name">Eurosport 2</span></div>
+  <div class="channel" data-url="https://replay1-il.annatel.tv/israeltorah/video.m3u8"><span class="channel-name">Israel Torah</span></div>
+  <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/i24newsil.isml/i24newsil.m3u8"><span class="channel-name">i24 News IL</span></div>
+</div>
 
-  <!-- LISTE DES CHAÎNES -->
-  <div id="channel-col">
+<!-- ZONE VIDÉO (div absolu, à droite de la liste) -->
+<div id="video-col">
+  <video id="video" controls playsinline webkit-playsinline
+    x-webkit-airplay="allow" preload="none"></video>
 
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8"><span class="channel-name">TF1</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france2.isml/france2.m3u8"><span class="channel-name">France 2</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france3.isml/france3.m3u8"><span class="channel-name">France 3</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalplus.isml/canalplus.m3u8"><span class="channel-name">Canal+</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france5.isml/france5.m3u8"><span class="channel-name">France 5</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/m6.isml/m6.m3u8"><span class="channel-name">M6</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/arte.isml/arte.m3u8"><span class="channel-name">Arte</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tmc.isml/tmc.m3u8"><span class="channel-name">TMC</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/nt1.isml/nt1.m3u8"><span class="channel-name">NT1</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/w9.isml/w9.m3u8"><span class="channel-name">W9</span></div>
-    <div class="channel" data-url="https://replay1-il.annatel.tv/annatelplus/video.m3u8"><span class="channel-name">Annatel+</span></div>
-    <div class="channel" data-url="https://replay1-il.annatel.tv/tandem/video.m3u8"><span class="channel-name">Tandem</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/bfmtv.isml/bfmtv.m3u8"><span class="channel-name">BFM TV</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/itele.isml/itele.m3u8"><span class="channel-name">iTele</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/d17.isml/d17.m3u8"><span class="channel-name">D17</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tf1seriesfilms.isml/tf1seriesfilms.m3u8"><span class="channel-name">TF1 Séries Films</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/lequipe21.isml/lequipe21.m3u8"><span class="channel-name">L'Équipe 21</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/6ter.isml/6ter.m3u8"><span class="channel-name">6Ter</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/rmcstory.isml/rmcstory.m3u8"><span class="channel-name">RMC Story</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/i24newsfr.isml/i24newsfr.m3u8"><span class="channel-name">i24 News FR</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cherie25.isml/cherie25.m3u8"><span class="channel-name">Chérie 25</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/rmcdecouverte.isml/rmcdecouverte.m3u8"><span class="channel-name">RMC Découverte</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/beinsport1.isml/beinsport1.m3u8"><span class="channel-name">BEIN Sport 1</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/beinsport2.isml/beinsport2.m3u8"><span class="channel-name">BEIN Sport 2</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/beinsport3.isml/beinsport3.m3u8"><span class="channel-name">BEIN Sport 3</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/sfrsport1.isml/sfrsport1.m3u8"><span class="channel-name">SFR Sport 1</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/sfrsport2.isml/sfrsport2.m3u8"><span class="channel-name">SFR Sport 2</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/sfrsport3.isml/sfrsport3.m3u8"><span class="channel-name">SFR Sport 3</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalcinema.isml/canalcinema.m3u8"><span class="channel-name">Canal Cinéma</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalsport.isml/canalsport.m3u8"><span class="channel-name">Canal Sport</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cinepluspremier.isml/cinepluspremier.m3u8"><span class="channel-name">Ciné+ Premier</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cineplusfrisson.isml/cineplusfrisson.m3u8"><span class="channel-name">Ciné+ Frisson</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/cineplusfamiz.isml/cineplusfamiz.m3u8"><span class="channel-name">Ciné+ Famiz</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/m6inter.isml/m6inter.m3u8"><span class="channel-name">M6 Inter</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/rtl9.isml/rtl9.m3u8"><span class="channel-name">RTL9</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/tvlive/comedie/index.m3u8"><span class="channel-name">Comédie</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/euronews.isml/euronews.m3u8"><span class="channel-name">Euro News</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/equidia.isml/equidia.m3u8"><span class="channel-name">Equidia</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/tf1hd.isml/tf1hd.m3u8"><span class="channel-name">TF1 HD</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/france2hd.isml/france2hd.m3u8"><span class="channel-name">France 2 HD</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalplushd.isml/canalplushd.m3u8"><span class="channel-name">Canal+ HD</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/m6hd.isml/m6hd.m3u8"><span class="channel-name">M6 HD</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/canalsporthd.isml/canalsporthd.m3u8"><span class="channel-name">Canal Sport HD</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/infosport.isml/infosport.m3u8"><span class="channel-name">Info Sport</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/gulli.isml/gulli.m3u8"><span class="channel-name">Gulli</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/nickjr.isml/nickjr.m3u8"><span class="channel-name">Nickelodeon Jr</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/planete.isml/planete.m3u8"><span class="channel-name">Planète</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/atvcpp.isml/atvcpp.m3u8"><span class="channel-name">A Tv Cpp</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/eurosport.isml/eurosport.m3u8"><span class="channel-name">Eurosport 1</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/tvlive/eurosport2/index.m3u8"><span class="channel-name">Eurosport 2</span></div>
-    <div class="channel" data-url="https://replay1-il.annatel.tv/israeltorah/video.m3u8"><span class="channel-name">Israel Torah</span></div>
-    <div class="channel" data-url="https://live1-iix.annatel.tv/smooths_live/i24newsil.isml/i24newsil.m3u8"><span class="channel-name">i24 News IL</span></div>
+  <div id="controls">
+    <button class="ctrl-btn" id="prev-btn">◀ Préc.</button>
+    <button class="ctrl-btn" id="fullscreen-btn">⛶ Plein écran</button>
+    <button class="ctrl-btn" id="next-btn">Suiv. ▶</button>
+  </div>
 
-  </div><!-- /channel-col -->
-
-  <!-- LECTEUR VIDÉO -->
-  <div id="video-col">
-
-    <div id="video-wrapper">
-      <!--
-        NOTES IPAD 3 / SAFARI 9 :
-        - playsinline + webkit-playsinline = lecture inline (pas en plein écran forcé)
-        - controls = contrôles natifs Safari (pause, volume, plein écran)
-        - autoplay SANS muted = Safari iOS le bloque → on lance manuellement via JS
-        - PAS de HLS.js → on s'appuie uniquement sur le décodeur natif
-      -->
-      <video
-        id="video"
-        controls
-        playsinline
-        webkit-playsinline
-        x-webkit-airplay="allow"
-        preload="none"
-      ></video>
-    </div>
-
-    <div id="controls">
-      <button class="ctrl-btn" id="prev-btn">◀ Préc.</button>
-      <button class="ctrl-btn" id="fullscreen-btn">⛶ Plein écran</button>
-      <button class="ctrl-btn" id="next-btn">Suiv. ▶</button>
-    </div>
-
-    <div id="loading">⏳ Chargement…</div>
-    <div id="info-msg"></div>
-
-  </div><!-- /video-col -->
-
-</div><!-- /layout -->
+  <div id="loading">⏳ Chargement…</div>
+  <div id="info-msg"></div>
+</div>
 
 <script>
 /*
-  ================================================================
-  GREG TV — VERSION IPAD 3 (A1416, iOS 9.3.5, Safari 9)
-  ================================================================
-  Contraintes respectées :
-  - ZERO HLS.js  → lecture 100 % native Safari HLS
-  - ZERO fetch   → XMLHttpRequest uniquement
-  - ZERO const/let → var partout
-  - localStorage avec try/catch (peut être bloqué en local)
-  - Pas de Promise.catch sans vérification
-  ================================================================
+  Greg TV — iPad 3 / Safari 9 — v1.2
+  Layout 100% position:absolute (plus de display:table)
+  Scroll via div absolu avec -webkit-overflow-scrolling:touch
 */
 
-/* ---- Éléments DOM ---- */
 var tokenInput    = document.getElementById("tokenInput");
 var tokenStatus   = document.getElementById("tokenStatus");
 var video         = document.getElementById("video");
@@ -355,203 +276,137 @@ var nextBtn       = document.getElementById("next-btn");
 var prevBtn       = document.getElementById("prev-btn");
 var infoMsg       = document.getElementById("info-msg");
 var loadingEl     = document.getElementById("loading");
-
+var channelScroll = document.getElementById("channel-scroll");
+var channels      = channelScroll.querySelectorAll(".channel");
 var currentChannel = null;
-var channels = document.querySelectorAll(".channel");
 
-/* ================================================================
-   1. STOCKAGE DU TOKEN (localStorage avec try/catch)
-   ================================================================ */
-function storageGet(key) {
-  try { return localStorage.getItem(key); } catch(e) { return null; }
-}
-function storageSet(key, val) {
-  try { localStorage.setItem(key, val); } catch(e) {}
-}
+/* ---- localStorage sécurisé ---- */
+function storageGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function storageSet(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }
 
-/* ================================================================
-   2. VÉRIFICATION DU TOKEN (XMLHttpRequest, pas fetch)
-   ================================================================ */
+/* ---- Vérification token via video probe ---- */
+var checkTimer  = null;
+var probeVideo  = document.createElement("video");
+probeVideo.preload = "metadata";
+probeVideo.muted   = true;
+probeVideo.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;left:-9999px;";
+document.body.appendChild(probeVideo);
+
 function checkToken(token) {
   if (!token) { tokenStatus.textContent = "⏳"; return; }
   tokenStatus.textContent = "⏳";
-  var testUrl = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
-  var xhr = new XMLHttpRequest();
-  xhr.open("HEAD", testUrl, true);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState === 4) {
-      tokenStatus.textContent = (xhr.status >= 200 && xhr.status < 400) ? "✅" : "❌";
-    }
-  };
-  xhr.onerror = function() { tokenStatus.textContent = "❌"; };
-  xhr.send();
+  if (checkTimer) clearTimeout(checkTimer);
+  checkTimer = setTimeout(function() {
+    var url = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
+    probeVideo.onerror         = function() { tokenStatus.textContent = "❌"; };
+    probeVideo.onloadedmetadata = function() { tokenStatus.textContent = "✅"; };
+    probeVideo.src = url;
+    probeVideo.load();
+  }, 900);
 }
 
-/* Chargement au démarrage */
-var savedToken = storageGet("tvToken");
-if (savedToken) {
-  tokenInput.value = savedToken;
-  checkToken(savedToken);
-}
+var saved = storageGet("tvToken");
+if (saved) { tokenInput.value = saved; checkToken(saved); }
 
 tokenInput.onkeyup = function() {
-  var t = tokenInput.value.replace(/\s/g, "");
+  var t = tokenInput.value.replace(/\s/g,"");
   storageSet("tvToken", t);
   checkToken(t);
 };
 
-/* ================================================================
-   3. LECTEUR VIDÉO — Safari natif HLS uniquement
-   ================================================================ */
-function showInfo(msg) {
-  infoMsg.textContent = msg;
-  infoMsg.className = "visible";
-}
-function hideInfo() {
-  infoMsg.className = "";
-}
-function showLoading() { loadingEl.className = "visible"; }
-function hideLoading()  { loadingEl.className = ""; }
+/* ---- Lecteur ---- */
+function showInfo(m) { infoMsg.textContent = m; infoMsg.className = "visible"; }
+function hideInfo()  { infoMsg.className = ""; }
+function showLoad()  { loadingEl.className = "visible"; }
+function hideLoad()  { loadingEl.className = ""; }
 
 function loadChannel(url) {
-  var token = tokenInput.value.replace(/\s/g, "");
-  if (!token) {
-    showInfo("⚠️ Entrez d'abord votre token dans le champ ci-dessus.");
-    return;
-  }
+  var token = tokenInput.value.replace(/\s/g,"");
+  if (!token) { showInfo("⚠️ Entrez d'abord votre token."); return; }
   hideInfo();
+  showLoad();
 
-  /* Construction de l'URL finale avec token */
-  var finalUrl = url;
-  if (url.indexOf("?token=") === -1 && url.indexOf("&token=") === -1) {
-    finalUrl = url + "?token=" + encodeURIComponent(token);
-  }
+  var finalUrl = (url.indexOf("?token=") === -1)
+    ? url + "?token=" + encodeURIComponent(token)
+    : url;
 
-  /*
-    Sur iPad 3 / Safari 9 :
-    - video.canPlayType('application/vnd.apple.mpegurl') retourne "maybe" ou "probably"
-    - On met la src et on appelle play()
-    - On NE charge PAS HLS.js (non supporté et inutile sur Safari)
-  */
-
-  showLoading();
-
-  /* Arrêt propre de la lecture précédente */
   video.pause();
   video.src = "";
   video.load();
 
-  /* Gestion de l'erreur (ex. flux HTTPS non autorisé) */
   video.onerror = function() {
-    hideLoading();
+    hideLoad();
     var src = video.src || finalUrl;
-    /* Tentative HTTP si on était en HTTPS (utile pour Israel Torah) */
     if (src.indexOf("https:") === 0) {
-      var httpUrl = src.replace("https:", "http:");
+      var httpUrl = src.replace("https:","http:");
       video.onerror = function() {
-        hideLoading();
-        showInfo("❌ Impossible de lire cette chaîne. Vérifiez votre token ou votre connexion.");
+        hideLoad();
+        showInfo("❌ Impossible de lire cette chaîne.");
       };
       video.src = httpUrl;
       video.load();
       video.play();
     } else {
-      showInfo("❌ Impossible de lire cette chaîne. Vérifiez votre token ou votre connexion.");
+      showInfo("❌ Impossible de lire cette chaîne.");
     }
   };
+  video.oncanplay = function() { hideLoad(); hideInfo(); };
 
-  video.oncanplay = function() {
-    hideLoading();
-    hideInfo();
-  };
-
-  /* Affectation et lecture */
   video.src = finalUrl;
   video.load();
-
-  /* play() sur Safari 9 peut ne pas retourner de Promise → guard */
   var p = video.play();
-  if (p && typeof p.then === "function") {
-    p.then(function() {
-      /* lecture lancée */
-    });
-    /* .catch pas dispo sur vieux Safari — on gère via onerror */
-  }
+  if (p && typeof p.then === "function") { p.then(function(){}); }
 }
 
-/* ================================================================
-   4. CLIC SUR UNE CHAÎNE
-   ================================================================ */
+/* ---- Clic sur chaîne ---- */
 for (var i = 0; i < channels.length; i++) {
   (function(ch) {
     ch.onclick = function() {
-      if (currentChannel) {
-        currentChannel.className = currentChannel.className.replace(" active", "");
-      }
-      ch.className += " active";
+      if (currentChannel) currentChannel.className = "channel";
+      ch.className = "channel active";
       currentChannel = ch;
       loadChannel(ch.getAttribute("data-url"));
     };
   })(channels[i]);
 }
 
-/* ================================================================
-   5. NAVIGATION PRÉCÉDENT / SUIVANT
-   ================================================================ */
+/* ---- Prev / Next ---- */
 function getIndex() {
   for (var i = 0; i < channels.length; i++) {
     if (channels[i] === currentChannel) return i;
   }
   return -1;
 }
-
 function changeChannel(dir) {
-  if (!currentChannel) {
-    /* Si aucune chaîne active, on prend la première */
-    if (channels.length > 0) channels[0].onclick();
-    return;
-  }
   var idx = getIndex();
-  if (idx === -1) return;
-  var next = idx + dir;
-  if (next >= channels.length) next = 0;
-  if (next < 0) next = channels.length - 1;
-  channels[next].onclick();
-  /* Scroll pour garder la chaîne visible */
-  if (channels[next].scrollIntoView) {
-    channels[next].scrollIntoView(false);
-  }
+  if (idx === -1) { if (channels.length) channels[0].onclick(); return; }
+  var n = idx + dir;
+  if (n >= channels.length) n = 0;
+  if (n < 0) n = channels.length - 1;
+  channels[n].onclick();
+  if (channels[n].scrollIntoView) channels[n].scrollIntoView(false);
 }
-
 nextBtn.onclick = function() { changeChannel(1); };
 prevBtn.onclick = function() { changeChannel(-1); };
 
-/* ================================================================
-   6. PLEIN ÉCRAN (toutes les API, du plus récent au plus ancien)
-   ================================================================ */
+/* ---- Plein écran ---- */
 fullscreenBtn.onclick = function() {
-  if      (video.requestFullscreen)        video.requestFullscreen();
-  else if (video.webkitRequestFullscreen)  video.webkitRequestFullscreen();
-  else if (video.mozRequestFullScreen)     video.mozRequestFullScreen();
-  else if (video.msRequestFullscreen)      video.msRequestFullscreen();
-  else if (video.webkitEnterFullscreen)    video.webkitEnterFullscreen(); /* iOS natif */
+  if      (video.requestFullscreen)       video.requestFullscreen();
+  else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+  else if (video.webkitEnterFullscreen)   video.webkitEnterFullscreen();
 };
 
-/* ================================================================
-   7. RACCOURCIS CLAVIER (accessoire Bluetooth, etc.)
-   ================================================================ */
+/* ---- Clavier ---- */
 document.onkeydown = function(e) {
   if (document.activeElement === tokenInput) return;
-  var k = e.key ? e.key.toLowerCase() : String.fromCharCode(e.keyCode).toLowerCase();
-  if (k === "f") fullscreenBtn.onclick();
-  if (k === "m") video.muted = !video.muted;
-  if (k === "n") changeChannel(1);
-  if (k === "p") changeChannel(-1);
+  var k = (e.key || String.fromCharCode(e.keyCode)).toLowerCase();
+  if (k==="f") fullscreenBtn.onclick();
+  if (k==="m") video.muted = !video.muted;
+  if (k==="n") changeChannel(1);
+  if (k==="p") changeChannel(-1);
 };
 
-/* ================================================================
-   8. SWIPE TACTILE (pour changer de chaîne en glissant sur la vidéo)
-   ================================================================ */
+/* ---- Swipe sur la vidéo ---- */
 var txStart = 0;
 video.addEventListener("touchstart", function(e) {
   txStart = e.changedTouches[0].screenX;
@@ -559,35 +414,6 @@ video.addEventListener("touchstart", function(e) {
 video.addEventListener("touchend", function(e) {
   var diff = e.changedTouches[0].screenX - txStart;
   if (Math.abs(diff) > 60) changeChannel(diff < 0 ? 1 : -1);
-}, false);
-
-/* ================================================================
-   9. SCROLL DE LA LISTE — empêche la page de bouger à la place
-   ================================================================ */
-var channelCol = document.getElementById("channel-col");
-
-channelCol.addEventListener("touchstart", function(e) {
-  /* Mémoriser la position Y au début du touch */
-  this._touchStartY = e.changedTouches[0].clientY;
-  this._scrollTop   = this.scrollTop;
-}, false);
-
-channelCol.addEventListener("touchmove", function(e) {
-  var dy = this._touchStartY - e.changedTouches[0].clientY;
-  var newScroll = this._scrollTop + dy;
-
-  /* Bornes : empêche le rebond natif qui scroll la page */
-  if (newScroll <= 0) {
-    this.scrollTop = 0;
-    e.preventDefault();
-  } else if (newScroll >= this.scrollHeight - this.offsetHeight) {
-    this.scrollTop = this.scrollHeight - this.offsetHeight;
-    e.preventDefault();
-  } else {
-    /* Dans les limites → on laisse défiler normalement */
-    /* mais on stopPropagation pour éviter que la page bouge aussi */
-    e.stopPropagation();
-  }
 }, false);
 
 </script>
