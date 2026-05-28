@@ -284,25 +284,13 @@ var currentChannel = null;
 function storageGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
 function storageSet(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }
 
-/* ---- Vérification token via video probe ---- */
-var checkTimer  = null;
-var probeVideo  = document.createElement("video");
-probeVideo.preload = "metadata";
-probeVideo.muted   = true;
-probeVideo.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;left:-9999px;";
-document.body.appendChild(probeVideo);
-
+/* ---- Vérification token ---- */
+/* Safari iOS 9 bloque HEAD et GET cross-origin sur les .m3u8
+   On marque ✅ dès qu'une chaîne se lit, ❌ si lecture impossible */
 function checkToken(token) {
   if (!token) { tokenStatus.textContent = "⏳"; return; }
+  /* On indique juste que le token est saisi, sans tester */
   tokenStatus.textContent = "⏳";
-  if (checkTimer) clearTimeout(checkTimer);
-  checkTimer = setTimeout(function() {
-    var url = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
-    probeVideo.onerror         = function() { tokenStatus.textContent = "❌"; };
-    probeVideo.onloadedmetadata = function() { tokenStatus.textContent = "✅"; };
-    probeVideo.src = url;
-    probeVideo.load();
-  }, 900);
 }
 
 var saved = storageGet("tvToken");
@@ -336,6 +324,7 @@ function loadChannel(url) {
 
   video.onerror = function() {
     hideLoad();
+    tokenStatus.textContent = "❌";
     var src = video.src || finalUrl;
     if (src.indexOf("https:") === 0) {
       var httpUrl = src.replace("https:","http:");
@@ -350,7 +339,7 @@ function loadChannel(url) {
       showInfo("❌ Impossible de lire cette chaîne.");
     }
   };
-  video.oncanplay = function() { hideLoad(); hideInfo(); };
+  video.oncanplay = function() { hideLoad(); hideInfo(); tokenStatus.textContent = "✅"; };
 
   video.src = finalUrl;
   video.load();
