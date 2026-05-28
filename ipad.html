@@ -284,13 +284,48 @@ var currentChannel = null;
 function storageGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
 function storageSet(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }
 
-/* ---- Vérification token ---- */
-/* Safari iOS 9 bloque HEAD et GET cross-origin sur les .m3u8
-   On marque ✅ dès qu'une chaîne se lit, ❌ si lecture impossible */
+/* ---- Vérification token via lecture silencieuse en arrière-plan ---- */
+var probeVideo = document.createElement("video");
+probeVideo.muted    = true;
+probeVideo.preload  = "auto";
+probeVideo.style.cssText = "position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;";
+document.body.appendChild(probeVideo);
+
+var checkTimer = null;
+
 function checkToken(token) {
   if (!token) { tokenStatus.textContent = "⏳"; return; }
-  /* On indique juste que le token est saisi, sans tester */
   tokenStatus.textContent = "⏳";
+
+  /* Debounce : attend 600ms après la dernière frappe */
+  if (checkTimer) clearTimeout(checkTimer);
+  checkTimer = setTimeout(function() {
+
+    /* Arrêt propre de la probe précédente */
+    probeVideo.pause();
+    probeVideo.src = "";
+    probeVideo.load();
+
+    var url = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
+
+    probeVideo.oncanplay = function() {
+      tokenStatus.textContent = "✅";
+      /* On coupe dès qu'on a la réponse — inutile de continuer à charger */
+      probeVideo.pause();
+      probeVideo.src = "";
+      probeVideo.load();
+    };
+    probeVideo.onerror = function() {
+  
+    };
+
+    probeVideo.src = url;
+    probeVideo.load();
+    /* play() nécessaire sur iOS pour déclencher le chargement */
+    var p = probeVideo.play();
+    if (p && typeof p.then === "function") { p.then(function(){}); }
+
+  }, 600);
 }
 
 var saved = storageGet("tvToken");
@@ -324,7 +359,7 @@ function loadChannel(url) {
 
   video.onerror = function() {
     hideLoad();
-    tokenStatus.textContent = "❌";
+
     var src = video.src || finalUrl;
     if (src.indexOf("https:") === 0) {
       var httpUrl = src.replace("https:","http:");
@@ -339,7 +374,7 @@ function loadChannel(url) {
       showInfo("❌ Impossible de lire cette chaîne.");
     }
   };
-  video.oncanplay = function() { hideLoad(); hideInfo(); tokenStatus.textContent = "✅"; };
+  video.oncanplay = function() { hideLoad(); hideInfo(); };
 
   video.src = finalUrl;
   video.load();
