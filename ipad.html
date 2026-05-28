@@ -17,7 +17,9 @@
       color: #f0f0f0;
       font-family: Helvetica, Arial, sans-serif;
       font-size: 15px;
-      overflow: hidden;  /* le scroll est géré par les colonnes */
+      overflow: hidden;
+      position: fixed;   /* bloque le scroll de page sur iOS */
+      width: 100%;
     }
 
     /* =====================================================
@@ -78,9 +80,13 @@
     #layout {
       display: table;
       width: 100%;
-      /* hauteur = 100vh moins le header (~42px) */
       height: calc(100% - 42px);
       table-layout: fixed;
+      position: absolute;
+      top: 42px;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
 
     /* =====================================================
@@ -92,9 +98,10 @@
       vertical-align: top;
       background: #161616;
       border-right: 1px solid #2a2a2a;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;   /* scroll inertiel sur iOS */
+      overflow-y: scroll;                  /* scroll forcé (pas auto) */
+      -webkit-overflow-scrolling: touch;   /* scroll inertiel iOS */
       padding: 6px;
+      height: 100%;
     }
 
     .channel {
@@ -552,6 +559,35 @@ video.addEventListener("touchstart", function(e) {
 video.addEventListener("touchend", function(e) {
   var diff = e.changedTouches[0].screenX - txStart;
   if (Math.abs(diff) > 60) changeChannel(diff < 0 ? 1 : -1);
+}, false);
+
+/* ================================================================
+   9. SCROLL DE LA LISTE — empêche la page de bouger à la place
+   ================================================================ */
+var channelCol = document.getElementById("channel-col");
+
+channelCol.addEventListener("touchstart", function(e) {
+  /* Mémoriser la position Y au début du touch */
+  this._touchStartY = e.changedTouches[0].clientY;
+  this._scrollTop   = this.scrollTop;
+}, false);
+
+channelCol.addEventListener("touchmove", function(e) {
+  var dy = this._touchStartY - e.changedTouches[0].clientY;
+  var newScroll = this._scrollTop + dy;
+
+  /* Bornes : empêche le rebond natif qui scroll la page */
+  if (newScroll <= 0) {
+    this.scrollTop = 0;
+    e.preventDefault();
+  } else if (newScroll >= this.scrollHeight - this.offsetHeight) {
+    this.scrollTop = this.scrollHeight - this.offsetHeight;
+    e.preventDefault();
+  } else {
+    /* Dans les limites → on laisse défiler normalement */
+    /* mais on stopPropagation pour éviter que la page bouge aussi */
+    e.stopPropagation();
+  }
 }, false);
 
 </script>
