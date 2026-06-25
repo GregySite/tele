@@ -509,6 +509,7 @@
       } else if (tokenProbeVideo.canPlayType && tokenProbeVideo.canPlayType('application/vnd.apple.mpegurl')) {
         // Cas 2 : Safari iOS / vieux iPad -> on teste en natif via la balise <video>
         // (pas de reset src="" avant : ça déclenche une fausse erreur sur certains vieux iPad)
+        var triedHttpFallback = false;
         tokenProbeVideo.oncanplay = function() {
           if (myGen !== tokenCheckGeneration) return;
           tokenStatus.textContent = "✅";
@@ -516,6 +517,15 @@
         };
         tokenProbeVideo.onerror = function() {
           if (myGen !== tokenCheckGeneration) return;
+          // Même fallback HTTPS -> HTTP que la vraie lecture : certains vieux
+          // iPad échouent en HTTPS sur ce serveur alors que le token est valide.
+          if (!triedHttpFallback && tokenProbeVideo.src.indexOf("https:") === 0) {
+            triedHttpFallback = true;
+            tokenProbeVideo.src = tokenProbeVideo.src.replace("https:", "http:");
+            tokenProbeVideo.load();
+            tokenProbeVideo.play();
+            return;
+          }
           tokenStatus.textContent = "❌";
         };
         tokenProbeVideo.src = testUrl;
