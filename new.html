@@ -472,6 +472,7 @@
 
   var tokenCheckHls = null;
   var tokenCheckTimer = null;
+  var tokenCheckGeneration = 0;
 
   // Vérifie le token via la même voie que la lecture réelle (hls.js ou natif),
   // au lieu d'un XHR HEAD qui échoue silencieusement sur vieux Safari (CORS).
@@ -482,16 +483,21 @@
     if (tokenCheckTimer) clearTimeout(tokenCheckTimer);
     tokenCheckTimer = setTimeout(function() {
       var testUrl = "https://live1-iix.annatel.tv/smooths_live/tf1.isml/tf1.m3u8?token=" + encodeURIComponent(token);
+      // Génération courante : permet d'ignorer les événements tardifs
+      // d'un test précédent (ex: erreur déclenchée par un ancien chargement).
+      var myGen = ++tokenCheckGeneration;
 
       if (window.Hls && Hls.isSupported()) {
         // Cas 1 : PC / Android / Mac récents -> on teste avec hls.js
         if (tokenCheckHls) { tokenCheckHls.destroy(); tokenCheckHls = null; }
         tokenCheckHls = new Hls();
         tokenCheckHls.on(Hls.Events.MANIFEST_PARSED, function() {
+          if (myGen !== tokenCheckGeneration) return;
           tokenStatus.textContent = "✅";
           if (tokenCheckHls) { tokenCheckHls.destroy(); tokenCheckHls = null; }
         });
         tokenCheckHls.on(Hls.Events.ERROR, function(event, data) {
+          if (myGen !== tokenCheckGeneration) return;
           if (data && data.fatal) {
             tokenStatus.textContent = "❌";
             if (tokenCheckHls) { tokenCheckHls.destroy(); tokenCheckHls = null; }
@@ -502,15 +508,14 @@
 
       } else if (tokenProbeVideo.canPlayType && tokenProbeVideo.canPlayType('application/vnd.apple.mpegurl')) {
         // Cas 2 : Safari iOS / vieux iPad -> on teste en natif via la balise <video>
-        tokenProbeVideo.pause();
-        tokenProbeVideo.src = "";
-        tokenProbeVideo.load();
-
+        // (pas de reset src="" avant : ça déclenche une fausse erreur sur certains vieux iPad)
         tokenProbeVideo.oncanplay = function() {
+          if (myGen !== tokenCheckGeneration) return;
           tokenStatus.textContent = "✅";
           tokenProbeVideo.pause();
         };
         tokenProbeVideo.onerror = function() {
+          if (myGen !== tokenCheckGeneration) return;
           tokenStatus.textContent = "❌";
         };
         tokenProbeVideo.src = testUrl;
