@@ -1,0 +1,11 @@
+name = "tele-share"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+kv_namespaces = [
+  { binding = "share_kv", id = "df22be521284431790c36ba3de6095a9" }
+]
+
+# Secrets à définir après le déploiement (ne pas les mettre ici en clair) :
+#   wrangler secret put ADMIN_KEY
+#   wrangler secret put ENC_KEY
