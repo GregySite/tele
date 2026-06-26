@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Greg TV — Direct partagé</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    #channelName { font-size: 18px; margin: 12px 0; min-height: 24px; }
+    video { width: 100%; max-width: 900px; max-height: 80vh; background: black; }
+    #message { font-size: 16px; color: #aaa; text-align: center; padding: 20px; max-width: 400px; }
+  </style>
+</head>
+<body>
+  <div id="channelName"></div>
+  <video id="video" controls playsinline></video>
+  <div id="message" style="display:none;">Le partage n'est pas actif actuellement. Cette page reprendra automatiquement dès qu'il sera réactivé.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    // Remplace par l'URL de ton Worker (la même que dans new.html).
+    var SHARE_WORKER_URL = "https://share.gregyman.workers.dev/";
+
+    var video = document.getElementById("video");
+    var messageEl = document.getElementById("message");
+    var channelNameEl = document.getElementById("channelName");
+
+    var hls = null;
+    var lastEnabled = false;
+    var lastChannelName = "";
+
+    function stopPlayback() {
+      if (hls) { hls.destroy(); hls = null; }
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      video.style.display = "none";
+      channelNameEl.textContent = "";
+      messageEl.style.display = "block";
+    }
+
+    function startPlayback(channelName) {
+      messageEl.style.display = "none";
+      video.style.display = "block";
+      channelNameEl.textContent = channelName || "";
+
+      var playlistUrl = SHARE_WORKER_URL + "/hls/playlist.m3u8";
+
+      if (hls) { hls.destroy(); hls = null; }
+
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(playlistUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          video.play();
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = playlistUrl;
+        video.load();
+        var p = video.play();
+        if (p && typeof p.then === "function") { p.then(function(){}, function(){}); }
+      }
+    }
+
+    function poll() {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", SHARE_WORKER_URL + "/api/status", true);
+      xhr.onload = function() {
+        if (xhr.status < 200 || xhr.status >= 300) return;
+        var data;
+        try { data = JSON.parse(xhr.responseText); } catch (e) { return; }
+
+        if (data.enabled && (!lastEnabled || data.channelName !== lastChannelName)) {
+          // Activation, ou changement de chaîne en direct (auto-suivi) : on redémarre proprement.
+          startPlayback(data.channelName);
+        } else if (!data.enabled && lastEnabled) {
+          stopPlayback();
+        }
+
+        lastEnabled = data.enabled;
+        lastChannelName = data.channelName;
+      };
+      xhr.send();
+    }
+
+    stopPlayback();
+    poll();
+    setInterval(poll, 4000);
+  </script>
+</body>
+</html>
