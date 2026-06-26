@@ -56,11 +56,25 @@
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
           video.play();
         });
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          console.error("Erreur HLS:", data.type, data.details, data);
+          if (data.fatal) {
+            channelNameEl.textContent = (channelName || "") + " — erreur de lecture (" + data.details + ")";
+          }
+        });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = playlistUrl;
         video.load();
+        video.addEventListener("error", function() {
+          var err = video.error;
+          console.error("Erreur vidéo native:", err && err.code, err && err.message);
+          channelNameEl.textContent = (channelName || "") + " — erreur de lecture";
+        });
         var p = video.play();
         if (p && typeof p.then === "function") { p.then(function(){}, function(){}); }
+      } else {
+        console.error("Lecture HLS impossible : ni hls.js ni support natif disponible sur ce navigateur.");
+        channelNameEl.textContent = (channelName || "") + " — lecture impossible sur ce navigateur";
       }
     }
 
